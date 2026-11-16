@@ -57,6 +57,35 @@
   var params = new URLSearchParams(location.search);
   var testScript = params.get("script");
 
+  // ?perf=1 logs frame statistics every 5 s: the interval between frames
+  // (what the player sees) and the time spent inside the game's frame
+  // callback (CPU work, including issuing GL calls; GPU time is not included).
+  if (params.get("perf")) {
+    var rafOrig = window.requestAnimationFrame.bind(window);
+    var gaps = [], works = [], lastStart = 0, windowStart = performance.now();
+    window.sporePerf = [];
+    var pct = function (a, p) { var s = a.slice().sort(function (x, y) { return x - y; });
+      return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+    window.requestAnimationFrame = function (cb) {
+      return rafOrig(function (t) {
+        var start = performance.now();
+        if (lastStart) gaps.push(start - lastStart);
+        lastStart = start;
+        cb(t);
+        works.push(performance.now() - start);
+        if (start - windowStart >= 5000 && gaps.length) {
+          var r = { fps: +(gaps.length / ((start - windowStart) / 1000)).toFixed(1),
+            gapP50: +pct(gaps, 0.5).toFixed(2), gapP95: +pct(gaps, 0.95).toFixed(2),
+            workP50: +pct(works, 0.5).toFixed(2), workP95: +pct(works, 0.95).toFixed(2),
+            workMax: +Math.max.apply(null, works).toFixed(2) };
+          window.sporePerf.push(r);
+          console.log("[Perf] " + JSON.stringify(r));
+          gaps = []; works = []; windowStart = start;
+        }
+      });
+    };
+  }
+
   var Module = {
     preRun: [function () {
       (params.get("env") || "").split(",").forEach(function (kv) {
