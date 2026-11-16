@@ -50,10 +50,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(spore-lantern PRIVATE -Wall -Wextra)
 endif()
 
-# The game looks for assets/ next to the executable.
-add_custom_command(TARGET spore-lantern POST_BUILD
+# The game looks for assets/ next to the executable. This runs on every build
+# (not only when the executable relinks) so edited assets are always picked up.
+add_custom_target(spore-lantern-assets ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/assets
         $<TARGET_FILE_DIR:spore-lantern>/assets
     COMMENT "Copying assets next to the executable"
 )
+add_dependencies(spore-lantern-assets spore-lantern)

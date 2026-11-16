@@ -50,8 +50,8 @@ def sheet(frames):
 # Tiles
 # --------------------------------------------------------------------------
 OUTLINE = rgba("#110d1a")
-ROCK = [rgba("#1d1829"), rgba("#272036"), rgba("#332a47"), rgba("#42385c")]
-RIM = rgba("#5b4f7c")
+ROCK = [rgba("#2b2443"), rgba("#3a315a"), rgba("#4e4374"), rgba("#64588f")]
+RIM = rgba("#8a7cb6")
 MOSS = [rgba("#1f5a4a"), rgba("#2f8563"), rgba("#58b87c"), rgba("#9be08f")]
 
 
@@ -84,6 +84,8 @@ def make_tile(mask, seed):
             if d == 1:
                 shade = 3
             col = ROCK[shade]
+            if mask == 0:
+                col = tuple(int(v * 0.72) for v in col[:3]) + (255,)
             if d == 1 and noise(x, y, seed + 3) > 0.35:
                 col = RIM
             if d == 0:
@@ -123,7 +125,7 @@ def make_tiles():
 def make_background():
     size = 64
     img = Image.new("RGBA", (size, size))
-    base = [rgba("#0d0b16"), rgba("#12101d"), rgba("#181526")]
+    base = [rgba("#19152c"), rgba("#201b37"), rgba("#292344")]
     for y in range(size):
         for x in range(size):
             bx, by = (x // 8) % 8, ((y + (x // 16) * 3) // 6) % 10
@@ -704,7 +706,7 @@ def make_light():
         ("pix_blue.png", rgba("#7dd3ff")),
         ("pix_cyan.png", rgba("#7df0ff")),
         ("pix_red.png", rgba("#ff6a5a")),
-        ("pix_rock.png", rgba("#5b4f7c")),
+        ("pix_rock.png", rgba("#8a7cb6")),
     ):
         Image.new("RGBA", (4, 4), colour).save(OUT / name)
 
