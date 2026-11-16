@@ -67,7 +67,7 @@ with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 | `Enter` | confirm on title, win and lose screens |
 | `N` | new game on the title screen (erases the save) |
 | `Esc` | pause; quit from the title screen |
-| `F3` / `F4` | debug overlay / coarse lighting |
+| `F3` / `F4` / `F5` | debug overlay / coarse lighting / draw the map with the engine's `Tilemap::render()` |
 
 ## How it plays
 
@@ -100,7 +100,7 @@ with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 | `assets/` | generated art, sounds, the level, and the font |
 | `tools/make_art.py` | generates every image in `assets/gfx` |
 | `tools/make_audio.py` | synthesises every sound in `assets/sfx` |
-| `tools/build_level.py` | turns `assets/level/level.txt` into the Tiled map and the baked level image |
+| `tools/build_level.py` | turns `assets/level/level.txt` into the Tiled map (solid tile layer + decoration object layer) and the baked level image |
 | `tests/` | a scripted full playthrough |
 | `SCOPE.md` | what was planned before coding |
 | `FRICTION.md` | where the engine got in the way |
@@ -108,7 +108,7 @@ with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 
 The tools need Python 3 with Pillow and are only needed to regenerate assets;
 their output is committed. After editing `level.txt`, run
-`python3 tools/build_level.py`.
+`python3 tools/build_level.py` (and run `make_art.py` first if the art changed).
 
 ## Testing
 
@@ -128,11 +128,11 @@ Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
 1. **The level is ASCII, not a Tiled project.** The engine's tilemap exposes
    no tile, object or property data, so the game cannot read spawn points,
    spores or spikes from a map. `level.txt` is the source of truth and a
-   script generates the Tiled JSON the engine collides against. (Non-solid
-   tiles do work in the engine, as tile objects in an object layer; the game
-   does not use them because it does not draw through `Tilemap::render()`.)
-2. **The tile layer is drawn as one baked image**, not with `Tilemap::render()`,
-   which draws every tile of the map (about 860) every frame at a real cost per sprite.
+   script generates the Tiled JSON from it: a solid tile layer, and an object
+   layer of non-solid tile objects for the decoration.
+2. **The map is drawn as one baked image**, not with `Tilemap::render()`,
+   which draws every tile and object of the map (about 890) every frame at a
+   real cost per sprite. `F5` switches to the engine's rendering to compare.
 3. **Darkness is a grid of 16 px squares in 8 alpha steps** rather than smooth
    light, because sprites have no tint, alpha or blend mode. Crystals and the
    slime glow but do not light their surroundings, to save sprites.

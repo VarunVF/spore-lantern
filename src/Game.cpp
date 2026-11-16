@@ -1012,17 +1012,21 @@ void Game::renderWorld()
             { u0, v0, u0 + g.viewW() / SIZE, v0 + g.viewH() / SIZE });
     }
 
-    for (const Level::Decor& d : m_Level.decor)
+    // The cave: solid tiles plus the decoration object layer of the Tiled map.
+    // Normally this is the picture tools/build_level.py baked from that map,
+    // drawn as one sprite. m_Tilemap.render() shows the same thing (F5), but
+    // it issues a draw call for every tile and object of the whole map every
+    // frame, and each engine draw call also asks the window system for the
+    // window size.
+    if (m_EngineTilemapRender)
     {
-        const char* name = d.kind == 'v' ? "stalactite" : d.kind == 'm' ? "mushroom" : "crystal";
-        g.draw(g.tex(name), Level::cellTopLeft(d.cell), { TILE, TILE });
+        m_Tilemap.render(g.renderer(), g.window());
+        g.countExternalDraws(static_cast<int>(m_Tilemap.getRects().size() + m_Level.decor.size()));
     }
-
-    // The solid tiles, pre-baked into one image by tools/build_level.py.
-    // m_Tilemap.render() would show the same thing, but it issues one draw
-    // call per tile for the whole map every frame (861 here), and each engine
-    // draw call also asks the window system for the window size.
-    g.draw(g.tex("cave"), { 0.0f, 0.0f }, { m_Level.pixelWidth(), m_Level.pixelHeight() });
+    else
+    {
+        g.draw(g.tex("cave"), { 0.0f, 0.0f }, { m_Level.pixelWidth(), m_Level.pixelHeight() });
+    }
 
     for (const Level::Cell& cell : m_Level.spikes)
         g.draw(g.tex("spikes"), Level::cellTopLeft(cell), { TILE, TILE });

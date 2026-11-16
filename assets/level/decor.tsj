@@ -1,0 +1,14 @@
+{
+ "type": "tileset",
+ "version": "1.10",
+ "name": "decor",
+ "image": "../gfx/decor.png",
+ "imagewidth": 96,
+ "imageheight": 32,
+ "tilewidth": 32,
+ "tileheight": 32,
+ "columns": 3,
+ "tilecount": 3,
+ "margin": 0,
+ "spacing": 0
+}

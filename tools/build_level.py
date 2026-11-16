@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """Turn assets/level/level.txt into a Tiled JSON map the engine can load.
 
-The engine's Tilemap treats every tile in every tile layer as solid and does
-not expose tile ids or object data, so the ASCII file stays the single source
-of truth: '#' cells become tiles here, and the game reads every other
-character (player start, spores, spikes, ...) from level.txt itself.
+The ASCII file is the single source of truth. This script writes:
+
+- a tile layer with the '#' cells. Every tile in a tile layer is solid for the
+  engine's Tilemap, and this is what the player collides with;
+- an object layer of tile objects for the decoration ('v' stalactite,
+  'm' mushroom, 'c' crystal). The engine draws tile objects and gives them no
+  collision, which is its way of having non-solid tiles;
+- assets/gfx/decor.png, the tileset image for those objects;
+- assets/gfx/cave.png, both layers composed into one picture.
+
+The game still reads level.txt itself for things it has to know about (player
+start, spores, spikes, shrine, slime, door, and where the crystals glow),
+because the Tilemap does not expose tile ids or objects.
 
 Tile choice is a 4-bit "which sides are open" mask (up=1, right=2, down=4,
 left=8) that indexes into assets/gfx/tiles.png (see make_art.py).
@@ -19,6 +28,10 @@ LEVEL = ROOT / "assets" / "level"
 TILE = 32
 COLUMNS, ROWS = 8, 3          # layout of tiles.png
 INTERIOR_VARIANTS = [0, 16, 17, 18, 19]
+
+# Decoration tileset: one row, in this order. firstgid follows the cave tiles.
+DECOR = {"v": "stalactite", "m": "mushroom", "c": "crystal"}
+DECOR_FIRSTGID = COLUMNS * ROWS + 1
 
 
 def main():
@@ -49,6 +62,33 @@ def main():
                 index = INTERIOR_VARIANTS[(c * 7 + r * 13 + (c * r) % 5) % len(INTERIOR_VARIANTS)]
             data.append(index + 1)  # firstgid is 1
 
+    # Decoration as tile objects. In Tiled's format a tile object's (x, y) is
+    # its bottom-left corner with y pointing down.
+    gfx = ROOT / "assets" / "gfx"
+    decor_names = list(DECOR.values())
+    decor_image = Image.new("RGBA", (len(decor_names) * TILE, TILE), (0, 0, 0, 0))
+    for i, name in enumerate(decor_names):
+        decor_image.paste(Image.open(gfx / f"{name}.png").convert("RGBA"), (i * TILE, 0))
+    decor_image.save(gfx / "decor.png")
+
+    objects = []
+    for r in range(height):
+        for c in range(width):
+            kind = rows[r][c]
+            if kind in DECOR:
+                objects.append({
+                    "id": len(objects) + 1,
+                    "gid": DECOR_FIRSTGID + list(DECOR).index(kind),
+                    "name": DECOR[kind],
+                    "type": "",
+                    "rotation": 0,
+                    "visible": True,
+                    "width": TILE,
+                    "height": TILE,
+                    "x": c * TILE,
+                    "y": (r + 1) * TILE,
+                })
+
     tmj = {
         "width": width,
         "height": height,
@@ -62,6 +102,17 @@ def main():
         "layers": [
             {
                 "id": 1,
+                "name": "decoration",
+                "type": "objectgroup",
+                "draworder": "topdown",
+                "objects": objects,
+                "opacity": 1,
+                "visible": True,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": 2,
                 "name": "solid",
                 "type": "tilelayer",
                 "width": width,
@@ -71,9 +122,26 @@ def main():
                 "opacity": 1,
                 "visible": True,
                 "data": data,
-            }
+            },
         ],
-        "tilesets": [{"firstgid": 1, "source": "tiles.tsj"}],
+        "tilesets": [
+            {"firstgid": 1, "source": "tiles.tsj"},
+            {"firstgid": DECOR_FIRSTGID, "source": "decor.tsj"},
+        ],
+    }
+    decor_tsj = {
+        "type": "tileset",
+        "version": "1.10",
+        "name": "decor",
+        "image": "../gfx/decor.png",
+        "imagewidth": len(decor_names) * TILE,
+        "imageheight": TILE,
+        "tilewidth": TILE,
+        "tileheight": TILE,
+        "columns": len(decor_names),
+        "tilecount": len(decor_names),
+        "margin": 0,
+        "spacing": 0,
     }
     tsj = {
         "type": "tileset",
@@ -89,23 +157,31 @@ def main():
         "margin": 0,
         "spacing": 0,
     }
-    # The engine's Tilemap::render() draws every tile of the map each frame,
-    # one draw call per tile and with no culling. Bake the same picture into a
-    # single image the game can draw as one sprite instead; the Tilemap is
-    # still what the player collides with.
-    atlas = Image.open(ROOT / "assets" / "gfx" / "tiles.png").convert("RGBA")
+    # The engine's Tilemap::render() draws every tile and object of the map each
+    # frame, one draw call each and with no culling. Bake the same picture into
+    # a single image the game can draw as one sprite instead (objects first,
+    # then tiles, which is the order the engine draws them in). The Tilemap is
+    # still what the player collides with, and F5 in the game switches to the
+    # engine's own rendering for comparison.
+    atlas = Image.open(gfx / "tiles.png").convert("RGBA")
     baked = Image.new("RGBA", (width * TILE, height * TILE), (0, 0, 0, 0))
+    for obj in objects:
+        index = obj["gid"] - DECOR_FIRSTGID
+        tile = decor_image.crop((index * TILE, 0, (index + 1) * TILE, TILE))
+        baked.alpha_composite(tile, (obj["x"], obj["y"] - obj["height"]))
     for i, gid in enumerate(data):
         if gid == 0:
             continue
         index = gid - 1
         sx, sy = (index % COLUMNS) * TILE, (index // COLUMNS) * TILE
-        baked.paste(atlas.crop((sx, sy, sx + TILE, sy + TILE)), ((i % width) * TILE, (i // width) * TILE))
-    baked.save(ROOT / "assets" / "gfx" / "cave.png")
+        baked.alpha_composite(atlas.crop((sx, sy, sx + TILE, sy + TILE)), ((i % width) * TILE, (i // width) * TILE))
+    baked.save(gfx / "cave.png")
 
     (LEVEL / "cave.tmj").write_text(json.dumps(tmj))
     (LEVEL / "tiles.tsj").write_text(json.dumps(tsj, indent=1))
-    print(f"wrote cave.tmj ({width}x{height}), tiles.tsj and gfx/cave.png")
+    (LEVEL / "decor.tsj").write_text(json.dumps(decor_tsj, indent=1))
+    print(f"wrote cave.tmj ({width}x{height}, {len(objects)} decoration objects), "
+          "tiles.tsj, decor.tsj, gfx/decor.png and gfx/cave.png")
 
 
 if __name__ == "__main__":

@@ -18,11 +18,12 @@ this repository. No third-party art or audio was used, traced or sampled.
 
 | Files | Generator | Notes |
 | --- | --- | --- |
-| `assets/gfx/*.png` except `cave.png` | `tools/make_art.py` | Pixel art defined as ASCII grids and small procedural routines (tiles, slime, door, glows), upscaled 2×. |
-| `assets/gfx/cave.png` | `tools/build_level.py` | The tile layer of the level, composed from `tiles.png`. |
+| `assets/gfx/*.png` except `cave.png` and `decor.png` | `tools/make_art.py` | Pixel art defined as ASCII grids and small procedural routines (tiles, slime, door, glows), upscaled 2×. |
+| `assets/gfx/decor.png` | `tools/build_level.py` | Tileset for the decoration objects, composed from `stalactite.png`, `mushroom.png` and `crystal.png`. |
+| `assets/gfx/cave.png` | `tools/build_level.py` | Both layers of the level map composed into one picture. |
 | `assets/sfx/*.wav` | `tools/make_audio.py` | Synthesised with sine, triangle, square and filtered-noise generators (Python standard library only). |
 | `assets/level/level.txt` | hand-written | The level. |
-| `assets/level/cave.tmj`, `assets/level/tiles.tsj` | `tools/build_level.py` | Tiled-format JSON generated from `level.txt`. |
+| `assets/level/cave.tmj`, `assets/level/tiles.tsj`, `assets/level/decor.tsj` | `tools/build_level.py` | Tiled-format JSON generated from `level.txt`. |
 
 These generated assets carry no third-party rights. The repository owner may
 license them as they see fit.

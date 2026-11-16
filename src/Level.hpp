@@ -6,9 +6,10 @@
 #include <glm/glm.hpp>
 
 // The level is authored as ASCII (assets/level/level.txt). tools/build_level.py
-// turns the '#' cells into the Tiled map the engine collides against; this
-// class reads everything else, because the engine's Tilemap does not expose
-// tile ids, objects or properties.
+// turns it into the Tiled map the engine loads: '#' cells become the solid
+// tile layer and decoration becomes non-solid tile objects. This class reads
+// the same file for everything the game has to know the position of, because
+// the engine's Tilemap does not expose tile ids, objects or properties.
 //
 // World space follows the engine: +y is up, a sprite's position is its
 // top-left corner, and the top-left of cell (0, 0) is the origin. The whole
