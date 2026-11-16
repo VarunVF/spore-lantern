@@ -72,4 +72,32 @@ Never cut: the loop in "Must have".
 
 ## Design changes
 
-Recorded as they happen; see the end of README.md for the final list.
+Recorded as they happened. Reasons and measurements are in FRICTION.md.
+
+- Level authored as ASCII plus a generator script instead of in Tiled
+  (engine tilemap: every tile solid, no object or property access).
+- Tile layer drawn as one baked image instead of `Tilemap::render()`
+  (one draw call per tile, no culling, costly per sprite on X11).
+- Lighting became a grid of 16 px squares in 8 alpha steps
+  (no tint, alpha, blend modes or render targets).
+- Slime moves with its own code on a flat floor
+  (engine collision handles bodies up to one tile only).
+- The slime only chases when the player is on its floor, and standing throws
+  are a short lob while running throws go further. Found while play-testing:
+  with a fixed arc the slime could sit under the ledge where no throw reached it.
+- Spike pit pillars widened from one tile to two, and the third spore raised
+  one tile, after working through the jump arcs.
+- The stone steps are entered from their far end: an upper step overhangs the
+  near approach and there are no one-way platforms.
+- Potion does not rotate; particles shrink instead of fading; title text is
+  32 px (font atlas limit); ambience loops by overlapping restarts.
+
+## What was cut
+
+Nothing from the "Must have" list. From the polish list everything shipped in
+some form. Things considered and left out:
+
+- Smooth (non-blocky) lighting and lights on crystals and the slime: sprite budget.
+- Potion spin and fading particles: no rotation or alpha in the renderer.
+- A second level, enemies other than the slime, and a boss health bar: time.
+- Gamepad support: the engine has no gamepad input.
