@@ -1142,7 +1142,7 @@ void Game::renderHud()
     if (m_State != State::Playing)
         return;
 
-    // one line of guidance at the bottom: a timed message wins over hints
+    // one line of guidance: a timed message wins over hints
     std::string hint = m_Message;
     if (hint.empty())
     {
@@ -1154,8 +1154,9 @@ void Game::renderHud()
     }
     if (!hint.empty())
     {
-        const bool twoLines = hint.find('\n') != std::string::npos;
-        g.text(hint, g.viewW() / 2.0f, g.viewH() - (twoLines ? 72.0f : 48.0f), 16, white, Gfx::Align::Center);
+        // Near the top: the camera stops at the cave floor, so the bottom of
+        // the screen is where the player and the slime are in the last room.
+        g.text(hint, g.viewW() / 2.0f, 84.0f, 16, white, Gfx::Align::Center);
     }
 }
 
