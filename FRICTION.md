@@ -308,3 +308,32 @@ The first five are the ones that shaped the game the most.
 - **Detail:** `Clock::tick(true)` sleeps to cap the frame rate, which works; there is just nothing above it. The engine example passes the raw frame delta straight into `Entity::update`, which makes jump height depend on frame rate.
 - **Area:** other
 - **Kind:** missing feature (minor).
+
+## Web (found while trying the browser build)
+
+These come from the `web-build` experiment, where the engine was changed on a
+branch. Entry 35 is what that branch fixes; 36 and 37 are still open there.
+
+### 35. The engine could not target the web without changes
+
+- **Wanted:** Build the unchanged engine with Emscripten.
+- **Did instead:** Four commits on an engine branch: one GL header that picks glad or GLES3, a GLSL 330 → GLSL ES 3.00 rewrite in `Shader`, no glad loading or `glPolygonMode` on the web, and a CMake branch that uses Emscripten's GLFW port and links for WebGL 2.
+- **Detail:** The engine's shaders are hard-coded `#version 330 core` strings inside headers, so a game cannot supply web versions itself; CMake always fetches and builds desktop GLFW and glad; `GL_STACK_OVERFLOW` is not defined in ES headers. Everything else (textures, VAOs, the font atlas's `GL_R8`, miniaudio, `std::ifstream` asset loading, the Tiled loader) worked unchanged.
+- **Area:** rendering / build
+- **Kind:** missing feature.
+
+### 36. Key presses shorter than one frame are lost
+
+- **Wanted:** Every key press seen at least once.
+- **Did instead:** Nothing in the game; noticed when automated presses in a throttled browser tab did nothing.
+- **Detail:** `Keyboard::begin()` polls `glfwGetKey()` for all 349 keys once per frame, so a press and release between two polls never shows up as "just pressed". People rarely press that fast at 60 fps, but at low frame rates (a background tab runs at 1–2 fps) taps vanish. GLFW's key callback would queue them.
+- **Area:** input
+- **Kind:** bug (minor).
+
+### 37. `Clock::tick(true)` sleeps the thread
+
+- **Wanted:** One frame-pacing call that works on every platform.
+- **Did instead:** `tick(false)` in the browser, where `requestAnimationFrame` paces frames.
+- **Detail:** Sleeping blocks the browser's only thread. Frame pacing on the web has to come from the browser's main loop (`emscripten_set_main_loop`), which also means the game cannot own a `while` loop; the game's loop body had to move into a per-frame function with its state on the heap.
+- **Area:** timing
+- **Kind:** missing feature.

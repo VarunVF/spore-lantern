@@ -55,6 +55,43 @@ A build from an empty build directory was verified at the end of development:
 configure 2 min 29 s (all downloads), compile 29 s with 16 jobs, no warnings
 with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 
+## Web build (experimental)
+
+The game also builds for the browser (WebAssembly + WebGL 2) with
+[Emscripten](https://emscripten.org). This needs four small engine changes
+that are not upstream yet: they are on the `web-build` branch of a local
+glgame2d clone (shader translation to GLSL ES, a GL header that picks GLES3,
+no glad or `glPolygonMode` on the web, and a CMake branch). Until that is
+merged, point the build at it:
+
+```bash
+emcmake cmake -S . -B build-web -DGLGAME2D_GIT_REPOSITORY=/path/to/glgame2d -DGLGAME2D_GIT_TAG=web-build
+```
+
+```bash
+cmake --build build-web -j
+```
+
+```bash
+python3 -m http.server 8000 --directory build-web
+```
+
+Then open http://localhost:8000/spore-lantern.html. The output is
+`spore-lantern.html/.js/.wasm/.data`, about 3 MB, and can go on any static
+host. Without the two `GLGAME2D_*` options the desktop build fetches GitHub
+`main` exactly as before.
+
+Differences in the browser:
+
+- Saves go to the browser's IndexedDB instead of `save.txt`, and survive reloads.
+- The page asks for a click first, because browsers keep audio off until then.
+- `Esc` on the title screen does nothing (there is nothing to quit to);
+  `--fullscreen`, `--size` and `--mute` do not apply.
+- Frames are paced by the browser instead of the engine's sleeping `Clock`.
+
+`tests/run_web_playtest.sh` plays the same scripted run in headless
+Chromium and checks the same milestones as the desktop test.
+
 ## Controls
 
 | Key | Action |
@@ -101,7 +138,8 @@ with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 | `tools/make_art.py` | generates every image in `assets/gfx` |
 | `tools/make_audio.py` | synthesises every sound in `assets/sfx` |
 | `tools/build_level.py` | turns `assets/level/level.txt` into the Tiled map (solid tile layer + decoration object layer) and the baked level image |
-| `tests/` | a scripted full playthrough |
+| `tests/` | a scripted full playthrough (desktop and web runners) |
+| `web/shell.html` | the page the web build is wrapped in |
 | `SCOPE.md` | what was planned before coding |
 | `FRICTION.md` | where the engine got in the way |
 | `ASSETS.md` | asset sources and licences |
