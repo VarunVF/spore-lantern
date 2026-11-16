@@ -75,7 +75,8 @@ Never cut: the loop in "Must have".
 Recorded as they happened. Reasons and measurements are in FRICTION.md.
 
 - Level authored as ASCII plus a generator script instead of in Tiled
-  (engine tilemap: every tile solid, no object or property access).
+  (engine tilemap: no tile, object or property access, so markers cannot
+  be read from a map; non-solid tiles are possible as tile objects).
 - Tile layer drawn as one baked image instead of `Tilemap::render()`
   (one draw call per tile, no culling, costly per sprite on X11).
 - Lighting became a grid of 16 px squares in 8 alpha steps

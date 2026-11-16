@@ -38,13 +38,15 @@ The first five are the ones that shaped the game the most.
 - **Area:** collision
 - **Kind:** bug (`move()` is undone by `update()`), plus missing feature (velocity access / impulse).
 
-### 4. The tilemap is all-or-nothing: every tile is solid, nothing can be queried
+### 4. The tilemap can be drawn and collided with, but not queried
 
 - **Wanted:** Author the level in one place: solid ground, background decoration that does not collide, spikes, and markers for the player start, spores, shrine, slime and door.
 - **Did instead:** The level is an ASCII file (`assets/level/level.txt`). `tools/build_level.py` turns the `#` cells into a Tiled JSON map with a single tile layer, which the engine loads for collision. The game parses the same ASCII file itself for everything else and draws decoration, spikes and props as its own sprites.
-- **Detail:** `Tilemap` turns every non-empty tile of every tile layer into a collision rectangle, so a decorative layer would become walls. There is no "what tile is at (x, y)", no access to tile ids, layer names or Tiled custom properties, and no access to object layers. Object layers are rendered only, and the loader reads `object["gid"]` unconditionally, so point or rectangle objects (the usual way to place spawn points) are not supported *(read, not hit)*. A failed load only logs; there is no way to ask the Tilemap whether it loaded.
+- **Detail:** Non-solid tiles *are* supported, through object layers: a tile object (an object with a `gid`) is drawn by `Tilemap::render()` and gets no collision rectangle, which is how the engine's own example map does it. I missed this at first and wrote here that every tile is solid; that was wrong and is corrected. Checked afterwards with a test map: three tile objects in open air were rendered, the collision rectangle count was unchanged (865 with and without the layer), and a dropped `Entity` fell through them to the floor. What is true: every tile in a *tile layer* is solid, in every tile layer, so non-solid tiles cannot be painted on a grid layer and must be placed as objects.
+  The part that still forced the ASCII file: there is no "what tile is at (x, y)", and no access to tile ids, layer names, Tiled custom properties or the objects themselves, so the game cannot read where a spawn point, a spore or a spike is from the map. The loader also reads `object["gid"]` unconditionally, so point or rectangle objects (the usual way to place markers) are not supported *(read, not hit)*. A failed load only logs; there is no way to ask the Tilemap whether it loaded.
+  Decoration could have lived in an object layer. It does not, because the game does not call `Tilemap::render()` at all (entries 1 and 9), so anything in the map would not be drawn.
 - **Area:** collision / assets
-- **Kind:** missing feature.
+- **Kind:** missing feature (map queries, markers). Non-solid tiles: not a gap, only undocumented.
 
 ### 5. Sprites have a texture and a rectangle, and nothing else
 

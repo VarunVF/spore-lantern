@@ -125,12 +125,14 @@ checks the game's log for each milestone. The simulation runs at a fixed
 
 Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
 
-1. **The level is ASCII, not a Tiled project.** The engine's tilemap treats
-   every tile as solid and exposes no tile, object or property data, so
-   `level.txt` is the source of truth and a script generates the Tiled JSON
-   the engine collides against.
+1. **The level is ASCII, not a Tiled project.** The engine's tilemap exposes
+   no tile, object or property data, so the game cannot read spawn points,
+   spores or spikes from a map. `level.txt` is the source of truth and a
+   script generates the Tiled JSON the engine collides against. (Non-solid
+   tiles do work in the engine, as tile objects in an object layer; the game
+   does not use them because it does not draw through `Tilemap::render()`.)
 2. **The tile layer is drawn as one baked image**, not with `Tilemap::render()`,
-   which draws all 861 tiles every frame at a real cost per sprite.
+   which draws every tile of the map (about 860) every frame at a real cost per sprite.
 3. **Darkness is a grid of 16 px squares in 8 alpha steps** rather than smooth
    light, because sprites have no tint, alpha or blend mode. Crystals and the
    slime glow but do not light their surroundings, to save sprites.
