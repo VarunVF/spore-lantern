@@ -418,7 +418,7 @@ void Game::step(Controls& controls)
     // Darkness is the most sprite-hungry thing on screen. If frames have been
     // slow for a while, fall back to cells of twice the size (a quarter of
     // the sprites) and stay there. F4 switches by hand.
-    if (!m_CoarseLight && m_FrameTime > 1.0f / 50.0f)
+    if (!m_CoarseLight && !m_LightManual && m_FrameTime > 1.0f / 50.0f)
     {
         m_SlowTime += DT;
         if (m_SlowTime > 2.0f)

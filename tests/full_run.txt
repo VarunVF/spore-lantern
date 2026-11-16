@@ -1,0 +1,60 @@
+# Plays the whole game from a fresh start to the win screen and the reset.
+# Run with tests/run_playtest.sh. Conditions are documented in src/main.cpp.
+0.5 confirm
++0.3 right 1
+# spore 1 floats one tile up in the start cave
+x>350 jump 1
++0.3 jump 0
+# the shrine is on the way (saves), then up the four steps on the hub wall
+# (walk under them to the far end and climb back towards the left)
+x>1052 right 0
++0.05 left 1
+x<1046 jump 1
++0.5 jump 0
+ground left 1
+x<936 jump 1
++0.5 jump 0
+ground left 1
+x<808 jump 1
++0.5 jump 0
+ground left 1
+x<680 jump 1
++0.5 jump 0
+ground left 1
+x<552 jump 1
++0.5 jump 0
+# upper gallery: over the rock, over the spikes, spore 2 at the far end
+x<398 jump 1
++0.2 jump 0
+ground left 1
+x<285 jump 1
++0.6 jump 0
+x<140 jump 1
++0.3 jump 0
+x<70 left 0
+# back out the same way
++0.2 right 1
+x>165 jump 1
++0.6 jump 0
+ground right 1
+x>318 jump 1
++0.2 jump 0
+# drop into the hub and cross the spike pit, spore 3 hangs over the middle gap
+x>1192 jump 1
++0.6 jump 0
+ground right 1
+x>1322 jump 1
++0.6 jump 0
+ground right 1
+x>1482 jump 1
++0.6 jump 0
+x>1580 right 0
+# on the ledge above the slime: brew, then lob when it hops into range
++0.5 brew
++0.5 right 0
+sx<1830 right 0
+sx>1790 throw
++3.0 right 1
++9.0 right 0
++1.0 confirm
++2.0 quit

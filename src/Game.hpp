@@ -67,7 +67,12 @@ public:
 
     bool wantsQuit() const { return m_Quit; }
     void toggleDebug() { m_Debug = !m_Debug; }
-    void toggleCoarseLight() { m_CoarseLight = !m_CoarseLight; m_SlowTime = -30.0f; }
+    void toggleCoarseLight() { m_CoarseLight = !m_CoarseLight; m_LightManual = true; }
+
+    // read-only state for the scripted play-test in main.cpp
+    glm::vec2 playerPosition() const { return m_Player.topLeft(); }
+    bool playerGrounded() const { return m_Grounded; }
+    float slimeX() const { return m_Slime.x; }
     void setFrameTime(float seconds) { m_FrameTime = seconds; }
     void setTrace(bool on) { m_Trace = on; }
 
@@ -161,6 +166,7 @@ private:
     bool m_Debug = false;
     bool m_Trace = false;
     bool m_CoarseLight = false;
+    bool m_LightManual = false;
     float m_SlowTime = 0.0f;
     float m_FrameTime = 0.0f;
 

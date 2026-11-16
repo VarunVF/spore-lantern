@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -17,14 +18,19 @@ namespace {
 using Key = glgame2d::Keyboard;
 
 // Optional scripted input, used for automated play-testing:
-//   SPORE_SCRIPT=<file>   lines of "<seconds> <action> <0|1>" or "<seconds> quit"
+//   SPORE_SCRIPT=<file>   one step per line: "<condition> <action> [0|1]"
 //   SPORE_SPEED=<n>       run the simulation n times faster
-//   SPORE_TRACE=1         log the player position twice a second
-//   SPORE_MUTE=1          do not open an audio device
-// Times are simulation seconds, so a script replays the same way every run.
+//   SPORE_TRACE=1         log the player position a few times a second
+//   SPORE_MUTE=1          do not open an audio device (same as --mute)
+// Steps run in order; each waits for its condition, then applies its action.
+// Conditions: "12.5" (simulation time), "+0.3" (seconds after the previous
+// step), "x>100" / "x<100" / "y>-500" / "y<-500" (player position),
+// "sx>100" / "sx<100" (slime position), "ground" (player standing).
+// Actions: left right jump (held, 0|1), brew throw confirm restart newgame
+// back (presses), quit.
 struct Script
 {
-    struct Event { float time; std::string action; bool down; };
+    struct Step { std::string condition, action; bool down; };
 
     bool load(const char* path)
     {
@@ -37,25 +43,39 @@ struct Script
             if (line.empty() || line[0] == '#')
                 continue;
             std::istringstream fields{ line };
-            Event event{ 0.0f, "", true };
+            Step step{ "", "", true };
             int down = 1;
-            if (!(fields >> event.time >> event.action))
+            if (!(fields >> step.condition >> step.action))
                 continue;
             fields >> down;
-            event.down = (down != 0);
-            events.push_back(event);
+            step.down = (down != 0);
+            steps.push_back(step);
         }
-        std::stable_sort(events.begin(), events.end(),
-            [](const Event& a, const Event& b) { return a.time < b.time; });
         return true;
     }
 
-    // Applies everything due at `now`. Returns false when the script asks to quit.
-    bool apply(float now, Controls& c)
+    bool ready(const std::string& c, float now, const Game& game) const
     {
-        while (next < events.size() && events[next].time <= now)
+        const glm::vec2 p = game.playerPosition();
+        auto number = [&](size_t from) { return std::strtof(c.c_str() + from, nullptr); };
+        if (c == "ground")          return game.playerGrounded();
+        if (c.starts_with("+"))     return now >= lastTime + number(1);
+        if (c.starts_with("x>"))    return p.x > number(2);
+        if (c.starts_with("x<"))    return p.x < number(2);
+        if (c.starts_with("y>"))    return p.y > number(2);
+        if (c.starts_with("y<"))    return p.y < number(2);
+        if (c.starts_with("sx>"))   return game.slimeX() > number(3);
+        if (c.starts_with("sx<"))   return game.slimeX() < number(3);
+        return now >= number(0);
+    }
+
+    // Runs every step that is due. Returns false when the script asks to quit.
+    bool apply(float now, const Game& game, Controls& c)
+    {
+        while (next < steps.size() && ready(steps[next].condition, now, game))
         {
-            const Event& e = events[next++];
+            const Step& e = steps[next++];
+            lastTime = now;
             const bool d = e.down;
             if (e.action == "quit") return false;
             else if (e.action == "left")    c.left = d;
@@ -67,12 +87,14 @@ struct Script
             else if (e.action == "restart") c.restart |= d;
             else if (e.action == "newgame") c.newGame |= d;
             else if (e.action == "back")    c.back |= d;
+            glgame2d::logging::info("[Script] {:.2f}s: {} {} {}", now, e.condition, e.action, d ? 1 : 0);
         }
         return true;
     }
 
-    std::vector<Event> events;
+    std::vector<Step> steps;
     size_t next = 0;
+    float lastTime = 0.0f;
 };
 
 void readKeyboard(glgame2d::Input& input, Controls& c)
@@ -106,19 +128,47 @@ int main(int argc, char** argv)
             std::filesystem::current_path(exe.parent_path(), ec);
     }
 
+    // Command line: --fullscreen, --size WIDTHxHEIGHT, --mute
+    int width = Gfx::BASE_W, height = Gfx::BASE_H;
+    bool fullscreen = false;
+    bool mute = std::getenv("SPORE_MUTE") != nullptr;
+    for (int i = 1; i < argc; i++)
+    {
+        const std::string arg = argv[i];
+        if (arg == "--fullscreen")
+            fullscreen = true;
+        else if (arg == "--mute")
+            mute = true;
+        else if (arg == "--size" && i + 1 < argc)
+        {
+            int w = 0, h = 0;
+            if (std::sscanf(argv[++i], "%dx%d", &w, &h) == 2 && w >= 320 && h >= 240)
+            {
+                width = w;
+                height = h;
+            }
+        }
+        else
+        {
+            std::printf("usage: %s [--fullscreen] [--size WIDTHxHEIGHT] [--mute]\n", argv[0]);
+            return arg == "--help" ? 0 : 1;
+        }
+    }
+
     Script script;
     const char* scriptPath = std::getenv("SPORE_SCRIPT");
     const bool scripted = scriptPath && script.load(scriptPath);
     const float speed = std::getenv("SPORE_SPEED") ? std::max(1.0f, std::strtof(std::getenv("SPORE_SPEED"), nullptr)) : 1.0f;
 
-    glgame2d::Window window{ Gfx::BASE_W, Gfx::BASE_H, "Spore Lantern" };
+    glgame2d::Window window{ width, height, "Spore Lantern",
+        fullscreen ? glgame2d::Window::WINDOWED_FULLSCREEN : glgame2d::Window::WINDOWED };
     // The icon must be set before any Texture is created: Texture switches
     // stb_image to "flip vertically" globally and setIcon() does not undo it.
     window.setIcon("assets/gfx/icon.png");
     window.enableVSync();
 
     Gfx gfx{ window };
-    Audio audio{ std::getenv("SPORE_MUTE") == nullptr };
+    Audio audio{ !mute };
     Game game{ gfx, audio, "save.txt" };
     game.setTrace(std::getenv("SPORE_TRACE") != nullptr);
 
@@ -143,7 +193,7 @@ int main(int argc, char** argv)
         while (accumulator >= Game::STEP && running)
         {
             if (scripted)
-                running = script.apply(simTime, controls);
+                running = script.apply(simTime, game, controls);
             game.step(controls);
             controls.clearEdges();
             accumulator -= Game::STEP;
