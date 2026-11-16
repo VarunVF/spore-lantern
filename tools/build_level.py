@@ -12,6 +12,8 @@ left=8) that indexes into assets/gfx/tiles.png (see make_art.py).
 import json
 import pathlib
 
+from PIL import Image
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LEVEL = ROOT / "assets" / "level"
 TILE = 32
@@ -87,9 +89,23 @@ def main():
         "margin": 0,
         "spacing": 0,
     }
+    # The engine's Tilemap::render() draws every tile of the map each frame,
+    # one draw call per tile and with no culling. Bake the same picture into a
+    # single image the game can draw as one sprite instead; the Tilemap is
+    # still what the player collides with.
+    atlas = Image.open(ROOT / "assets" / "gfx" / "tiles.png").convert("RGBA")
+    baked = Image.new("RGBA", (width * TILE, height * TILE), (0, 0, 0, 0))
+    for i, gid in enumerate(data):
+        if gid == 0:
+            continue
+        index = gid - 1
+        sx, sy = (index % COLUMNS) * TILE, (index // COLUMNS) * TILE
+        baked.paste(atlas.crop((sx, sy, sx + TILE, sy + TILE)), ((i % width) * TILE, (i // width) * TILE))
+    baked.save(ROOT / "assets" / "gfx" / "cave.png")
+
     (LEVEL / "cave.tmj").write_text(json.dumps(tmj))
     (LEVEL / "tiles.tsj").write_text(json.dumps(tsj, indent=1))
-    print(f"wrote cave.tmj ({width}x{height}) and tiles.tsj")
+    print(f"wrote cave.tmj ({width}x{height}), tiles.tsj and gfx/cave.png")
 
 
 if __name__ == "__main__":

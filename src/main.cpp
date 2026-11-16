@@ -137,6 +137,8 @@ int main(int argc, char** argv)
             readKeyboard(input, controls);
         if (input.isJustPressed(Key::KEY_F3))
             game.toggleDebug();
+        if (input.isJustPressed(Key::KEY_F4))
+            game.toggleCoarseLight();
 
         while (accumulator >= Game::STEP && running)
         {

@@ -81,11 +81,13 @@ void Gfx::useScreenCamera()
 
 void Gfx::drawUV(const glgame2d::Texture* texture, glm::vec2 topLeft, glm::vec2 size, const glm::vec4& uv)
 {
+    m_Draws++;
     m_Renderer.drawSprite(m_Window, glgame2d::Sprite{ topLeft, size, texture }, uv);
 }
 
 void Gfx::draw(const glgame2d::Texture* texture, glm::vec2 topLeft, glm::vec2 size)
 {
+    m_Draws++;
     m_Renderer.drawSprite(m_Window, glgame2d::Sprite{ topLeft, size, texture });
 }
 
@@ -195,6 +197,8 @@ void Gfx::endFrame()
             m_FontRenderer.renderFrame(*font);
     }
     m_Text.clear();
+    m_LastDraws = m_Draws;
+    m_Draws = 0;
 
     m_Window.swapBuffers();
 }

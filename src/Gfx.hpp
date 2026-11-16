@@ -58,6 +58,10 @@ public:
     glgame2d::Renderer& renderer() { return m_Renderer; }
     glgame2d::Window& window() { return m_Window; }
 
+    // Sprites drawn through this class during the previous frame (debug overlay).
+    int lastDrawCount() const { return m_LastDraws; }
+    void countExternalDraws(int n) { m_Draws += n; }
+
 private:
     struct TextItem
     {
@@ -83,5 +87,6 @@ private:
     glm::vec2 m_ViewTopLeft{ 0.0f, 0.0f };
     int m_WinW = BASE_W, m_WinH = BASE_H;
     float m_Scale = 1.0f;
+    int m_Draws = 0, m_LastDraws = 0;
     float m_ViewW = BASE_W, m_ViewH = BASE_H;
 };

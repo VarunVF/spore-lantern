@@ -32,8 +32,7 @@ constexpr float POTION_LIFETIME = 2.0f;
 constexpr float BURST_RADIUS = 84.0f;
 
 // light
-constexpr float CELL = 16.0f;       // size of one darkness cell
-constexpr int DARK_LEVELS = 16;
+constexpr int DARK_LEVELS = 8;         // must match tools/make_art.py
 constexpr float AMBIENT = 0.09f;
 
 float approach(float value, float target, float maxStep)
@@ -416,9 +415,26 @@ void Game::step(Controls& controls)
     }
     m_Shake = std::max(0.0f, m_Shake - 22.0f * DT);
 
+    // Darkness is the most sprite-hungry thing on screen. If frames have been
+    // slow for a while, fall back to cells of twice the size (a quarter of
+    // the sprites) and stay there. F4 switches by hand.
+    if (!m_CoarseLight && m_FrameTime > 1.0f / 50.0f)
+    {
+        m_SlowTime += DT;
+        if (m_SlowTime > 2.0f)
+        {
+            m_CoarseLight = true;
+            logging::info("[Game] Slow frames: switching to coarse lighting");
+        }
+    }
+    else
+    {
+        m_SlowTime = std::max(0.0f, m_SlowTime - DT);
+    }
+
     if (m_Trace && static_cast<int>(m_Time / DT) % 30 == 0)
-        logging::info("[Trace] t={:.2f} x={:.1f} y={:.1f} ground={} hearts={} spores={} slime={:.0f} ms={:.1f}",
-            m_Time, m_Player.topLeft().x, m_Player.topLeft().y, m_Grounded, m_Hearts, sporeCount(), m_Slime.x, m_FrameTime * 1000.0f);
+        logging::info("[Trace] t={:.2f} x={:.1f} y={:.1f} ground={} hearts={} spores={} slime={:.0f} ms={:.1f} draws={}",
+            m_Time, m_Player.topLeft().x, m_Player.topLeft().y, m_Grounded, m_Hearts, sporeCount(), m_Slime.x, m_FrameTime * 1000.0f, m_Gfx.lastDrawCount());
 }
 
 void Game::stepPlaying(Controls& controls)
@@ -911,18 +927,14 @@ std::vector<Game::Light> Game::collectLights() const
         if (!m_Carried[i])
             lights.push_back({ sporePos(i), 70.0f + 6.0f * std::sin(m_Time * 3.0f + i), 0.85f });
 
-    for (const Level::Decor& d : m_Level.decor)
-        if (d.kind == 'c')
-            lights.push_back({ Level::cellFloorCenter(d.cell) + glm::vec2{ 0.0f, 12.0f }, 62.0f, 0.5f });
+    // Crystals and the slime only get a glow sprite (see render()): every real
+    // light adds dozens of darkness sprites, and sprites are not cheap here.
 
     const glm::vec2 shrine = Level::cellFloorCenter(m_Level.shrine);
     lights.push_back({ { shrine.x, shrine.y + 40.0f }, m_ShrineLit ? 120.0f : 50.0f, m_ShrineLit ? 0.9f : 0.4f });
 
     if (m_DoorOpen)
         lights.push_back({ Level::cellFloorCenter(m_Level.door) + glm::vec2{ 0.0f, 28.0f }, 150.0f, 1.0f });
-
-    if (!m_Slime.dead)
-        lights.push_back({ { m_Slime.x, m_Slime.y + 18.0f }, 46.0f, 0.35f });
 
     if (m_Potion)
         lights.push_back({ m_Potion->body.center(), 100.0f, 0.95f });
@@ -935,7 +947,7 @@ std::vector<Game::Light> Game::collectLights() const
 void Game::renderDarkness(const std::vector<Light>& lights)
 {
     // The renderer has no blend modes, tint or render targets, so darkness is
-    // a world-aligned grid of translucent squares. Each cell picks one of 16
+    // a world-aligned grid of translucent squares. Each cell picks one of 8
     // alpha levels from the brightest light reaching it, and runs of equal
     // cells in a row are merged into one stretched sprite.
     static const glgame2d::Texture* dark[DARK_LEVELS] = {};
@@ -943,6 +955,7 @@ void Game::renderDarkness(const std::vector<Light>& lights)
         for (int i = 0; i < DARK_LEVELS; i++)
             dark[i] = m_Gfx.tex(std::format("dark_{:02}", i));
 
+    const float CELL = m_CoarseLight ? 32.0f : 16.0f;
     const glm::vec2 topLeft = m_ViewTopLeft;
     const int c0 = static_cast<int>(std::floor(topLeft.x / CELL));
     const int c1 = static_cast<int>(std::floor((topLeft.x + m_Gfx.viewW()) / CELL));
@@ -1005,7 +1018,11 @@ void Game::renderWorld()
         g.draw(g.tex(name), Level::cellTopLeft(d.cell), { TILE, TILE });
     }
 
-    m_Tilemap.render(g.renderer(), g.window());
+    // The solid tiles, pre-baked into one image by tools/build_level.py.
+    // m_Tilemap.render() would show the same thing, but it issues one draw
+    // call per tile for the whole map every frame (861 here), and each engine
+    // draw call also asks the window system for the window size.
+    g.draw(g.tex("cave"), { 0.0f, 0.0f }, { m_Level.pixelWidth(), m_Level.pixelHeight() });
 
     for (const Level::Cell& cell : m_Level.spikes)
         g.draw(g.tex("spikes"), Level::cellTopLeft(cell), { TILE, TILE });
@@ -1118,7 +1135,7 @@ void Game::renderHud()
     if (m_Debug)
     {
         const float fps = m_FrameTime > 0.0f ? 1.0f / m_FrameTime : 0.0f;
-        g.text(std::format("{:.0f} fps  {} particles", fps, m_Particles.size()),
+        g.text(std::format("{:.0f} fps  {} sprites  {} particles", fps, g.lastDrawCount(), m_Particles.size()),
             g.viewW() - 14.0f, 40.0f, 8, { 1.0f, 1.0f, 0.4f, 1.0f }, Gfx::Align::Right);
     }
 
@@ -1157,7 +1174,7 @@ void Game::renderOverlay()
     switch (m_State)
     {
         case State::Title:
-            dim(9);
+            dim(5);
             g.text("SPORE LANTERN", cx, cy - 150.0f, 32, teal, Align::Center);
             g.text("Gather three spores. Brew the light.\nBanish the slime that blocks the way out.",
                 cx, cy - 92.0f, 16, soft, Align::Center);
@@ -1171,7 +1188,7 @@ void Game::renderOverlay()
             break;
 
         case State::Paused:
-            dim(10);
+            dim(5);
             g.text("PAUSED", cx, cy - 70.0f, 32, white, Align::Center);
             g.text("ENTER  resume\nR  back to the last shrine\nN  title screen", cx, cy - 6.0f, 16, soft, Align::Center);
             break;
@@ -1180,7 +1197,7 @@ void Game::renderOverlay()
             break;
 
         case State::Lost:
-            dim(std::min(12, static_cast<int>(m_StateTime * 24.0f)));
+            dim(std::min(6, static_cast<int>(m_StateTime * 12.0f)));
             g.text("YOUR LANTERN WENT DARK", cx, cy - 60.0f, 32, { 1.0f, 0.45f, 0.4f, 1.0f }, Align::Center);
             g.text(m_HaveSave ? "The shrine still remembers you." : "The cave waits at the entrance.",
                 cx, cy - 4.0f, 16, soft, Align::Center);
@@ -1188,7 +1205,7 @@ void Game::renderOverlay()
             break;
 
         case State::Won:
-            dim(std::min(8, static_cast<int>(m_StateTime * 16.0f)));
+            dim(std::min(4, static_cast<int>(m_StateTime * 8.0f)));
             g.text("YOU CARRIED THE LIGHT OUT", cx, cy - 80.0f, 32, amber, Align::Center);
             g.text(std::format("Time {}    Lanterns lost {}", clockText(m_RunSeconds), m_Deaths),
                 cx, cy - 22.0f, 16, white, Align::Center);
@@ -1233,7 +1250,11 @@ void Game::render()
             g.drawCentered(g.tex("glow_teal"), sporePos(i), { 64.0f, 64.0f });
     for (const Level::Decor& d : m_Level.decor)
         if (d.kind == 'c')
-            g.drawCentered(g.tex("glow_blue"), Level::cellFloorCenter(d.cell) + glm::vec2{ 0.0f, 12.0f }, { 72.0f, 72.0f });
+        {
+            // self-lit: drawn again over the darkness, with a halo
+            g.draw(g.tex("crystal"), Level::cellTopLeft(d.cell), { TILE, TILE });
+            g.drawCentered(g.tex("glow_blue"), Level::cellFloorCenter(d.cell) + glm::vec2{ 0.0f, 12.0f }, { 84.0f, 84.0f });
+        }
     if (m_ShrineLit)
     {
         const glm::vec2 shrine = Level::cellFloorCenter(m_Level.shrine);

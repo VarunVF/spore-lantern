@@ -67,6 +67,7 @@ public:
 
     bool wantsQuit() const { return m_Quit; }
     void toggleDebug() { m_Debug = !m_Debug; }
+    void toggleCoarseLight() { m_CoarseLight = !m_CoarseLight; m_SlowTime = -30.0f; }
     void setFrameTime(float seconds) { m_FrameTime = seconds; }
     void setTrace(bool on) { m_Trace = on; }
 
@@ -159,6 +160,8 @@ private:
     bool m_Quit = false;
     bool m_Debug = false;
     bool m_Trace = false;
+    bool m_CoarseLight = false;
+    float m_SlowTime = 0.0f;
     float m_FrameTime = 0.0f;
 
     // player
