@@ -5,11 +5,28 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 namespace save {
 
 namespace {
 constexpr const char* MAGIC = "spore-lantern-save";
 constexpr int VERSION = 1;
+
+// In the browser the save directory is an in-memory copy of IndexedDB
+// (mounted in main.cpp); this copies the change back so it survives a reload.
+void persist()
+{
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        FS.syncfs(false, function(err) {
+            if (err) console.warn("Spore Lantern: could not store the save", err);
+        });
+    });
+#endif
+}
 }
 
 bool exists(const std::string& path)
@@ -83,17 +100,23 @@ bool write(const std::string& path, const SaveData& data)
          << "seconds " << data.seconds << '\n'
          << "deaths " << data.deaths << '\n';
 
-    std::ofstream out{ path, std::ios::trunc };
-    if (!out.is_open())
-        return false;
-    out << text.str();
-    return static_cast<bool>(out);
+    bool ok = false;
+    {
+        std::ofstream out{ path, std::ios::trunc };
+        if (!out.is_open())
+            return false;
+        out << text.str();
+        ok = static_cast<bool>(out);
+    }
+    persist();
+    return ok;
 }
 
 void erase(const std::string& path)
 {
     std::error_code ec;
     std::filesystem::remove(path, ec);
+    persist();
 }
 
 } // namespace save
