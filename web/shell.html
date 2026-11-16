@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spore Lantern</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #07080d; color: #9fb4c8;
+               font: 14px/1.4 system-ui, sans-serif; }
+  main { min-height: 100%; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; gap: 12px; padding: 16px;
+         box-sizing: border-box; }
+  .stage { position: relative; width: min(960px, 100%); aspect-ratio: 16 / 9; }
+  canvas { width: 100%; height: 100%; display: block; background: #000;
+           image-rendering: pixelated; outline: none; }
+  #start { position: absolute; inset: 0; display: flex; align-items: center;
+           justify-content: center; background: rgba(7, 8, 13, 0.85);
+           color: #ffd27a; font-size: 18px; cursor: pointer; border: 0;
+           width: 100%; }
+  #start[hidden] { display: none; }
+  #status { min-height: 1.4em; }
+  p { margin: 0; max-width: 960px; text-align: center; color: #6f8296; }
+</style>
+</head>
+<body>
+<main>
+  <div class="stage">
+    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <button id="start" hidden>Click to play</button>
+  </div>
+  <div id="status">Loading…</div>
+  <p>A/D or arrows move · Space jump · E brew · F throw · R last shrine · Esc pause.
+     Saves are kept in this browser.</p>
+</main>
+<script>
+  var statusEl = document.getElementById("status");
+  var startEl = document.getElementById("start");
+  var canvasEl = document.getElementById("canvas");
+
+  // Keys the game uses must not scroll the page.
+  window.addEventListener("keydown", function (e) {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].indexOf(e.key) >= 0)
+      e.preventDefault();
+  });
+
+  // Browsers keep audio suspended until the page gets a click, so the game
+  // waits behind a button. The click also resumes the audio context.
+  startEl.addEventListener("click", function () {
+    startEl.hidden = true;
+    canvasEl.focus();
+  });
+
+  // Testing hook: ?env=SPORE_MUTE=1,SPORE_SPEED=4&script=full_run.txt sets
+  // the same environment variables the desktop playtest uses and loads a
+  // scripted-input file into the game's file system before it starts.
+  var params = new URLSearchParams(location.search);
+  var testScript = params.get("script");
+
+  var Module = {
+    preRun: [function () {
+      (params.get("env") || "").split(",").forEach(function (kv) {
+        var i = kv.indexOf("=");
+        if (i > 0) ENV[kv.slice(0, i)] = kv.slice(i + 1);
+      });
+      if (testScript) {
+        ENV.SPORE_SCRIPT = "/test_script.txt";
+        addRunDependency("test-script");
+        fetch(testScript).then(function (r) { return r.text(); }).then(function (text) {
+          FS.writeFile("/test_script.txt", text);
+          removeRunDependency("test-script");
+        });
+      }
+    }],
+    canvas: canvasEl,
+    print: function (t) { console.log(t); },
+    printErr: function (t) { console.warn(t); },
+    setStatus: function (t) { statusEl.textContent = t; },
+    onRuntimeInitialized: function () {
+      statusEl.textContent = "";
+      startEl.hidden = false;
+    },
+  };
+  window.onerror = function (msg) { statusEl.textContent = "Error: " + msg; };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>
