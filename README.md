@@ -14,7 +14,7 @@ potion, and throw it at the slime that seals the exit.
 | --- | --- |
 | Repository | https://github.com/VarunVF/glgame2d |
 | Fetched ref | `main` (the repository has no tags) |
-| **Commit used** | **`2033fd78fe35bd2257a66fbb00b7111c0a2f8cea`** ("Cache window size, separate window and framebuffer sizes") |
+| **Commit used** | **`669d238d4e42d43c102cc2dd7a6e343faddd7f2e`** ("Support building for the web with Emscripten") |
 | First built against | `58312b47956e48200a6422834cc1c0a43204a057` ("Update GLCall macro") |
 
 The engine is fetched with CMake `FetchContent`; nothing from it is vendored or
@@ -56,6 +56,43 @@ Options: `--fullscreen`, `--size 1920x1080`, `--mute`.
 A build from an empty build directory was verified at the end of development:
 configure 2 min 29 s (all downloads), compile 29 s with 16 jobs, no warnings
 with `-Wall -Wextra`, and the scripted playthrough passed on the result.
+
+## Web build
+
+The game also builds for the browser (WebAssembly + WebGL 2) with
+[Emscripten](https://emscripten.org), using the engine's Emscripten support
+(glgame2d `669d238`). With the Emscripten SDK loaded
+(`source ~/emsdk/emsdk_env.sh`, or wherever it is installed):
+
+```bash
+emcmake cmake -S . -B build-web
+```
+
+```bash
+cmake --build build-web -j
+```
+
+```bash
+python3 -m http.server 8000 --directory build-web
+```
+
+Then open http://localhost:8000/spore-lantern.html. The output is
+`spore-lantern.html/.js/.wasm/.data`, about 3 MB, and can go on any static
+host. Add `?perf=1` to the URL to log frame statistics to the browser console.
+
+`GLGAME2D_GIT_REPOSITORY` and `GLGAME2D_GIT_TAG` can point either build at
+another engine checkout or branch; by default both fetch GitHub `main`.
+
+Differences in the browser:
+
+- Saves go to the browser's IndexedDB instead of `save.txt`, and survive reloads.
+- The page asks for a click first, because browsers keep audio off until then.
+- `Esc` on the title screen does nothing (there is nothing to quit to);
+  `--fullscreen`, `--size` and `--mute` do not apply.
+- Frames are paced by the browser instead of the engine's sleeping `Clock`.
+
+`tests/run_web_playtest.sh` plays the same scripted run in headless
+Chromium and checks the same milestones as the desktop test.
 
 ## Controls
 
@@ -103,7 +140,8 @@ with `-Wall -Wextra`, and the scripted playthrough passed on the result.
 | `tools/make_art.py` | generates every image in `assets/gfx` |
 | `tools/make_audio.py` | synthesises every sound in `assets/sfx` |
 | `tools/build_level.py` | turns `assets/level/level.txt` into the Tiled map (solid tile layer + decoration object layer) |
-| `tests/` | a scripted full playthrough |
+| `tests/` | a scripted full playthrough (desktop and web runners) |
+| `web/shell.html` | the page the web build is wrapped in |
 | `SCOPE.md` | what was planned before coding |
 | `FRICTION.md` | where the engine got in the way |
 | `ASSETS.md` | asset sources and licences |

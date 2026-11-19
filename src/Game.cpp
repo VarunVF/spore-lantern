@@ -315,7 +315,11 @@ void Game::step(Controls& controls)
     {
         case State::Title:
             if (controls.back)
+            {
+#ifndef __EMSCRIPTEN__
                 m_Quit = true;
+#endif
+            }
             else if (controls.newGame)
             {
                 save::erase(m_SavePath);
@@ -1177,7 +1181,10 @@ void Game::renderOverlay()
                 cx, cy - 8.0f, 16, pulse ? white : amber, Align::Center);
             if (m_HaveSave)
                 g.text("N  new game (erases the save)", cx, cy + 22.0f, 16, soft, Align::Center);
+#ifndef __EMSCRIPTEN__
+            // (a browser tab has nothing to quit to)
             g.text("ESC  quit", cx, cy + (m_HaveSave ? 52.0f : 22.0f), 16, soft, Align::Center);
+#endif
             g.text("A/D or arrows  move      SPACE  jump\nE  brew potion           F  throw potion\nR  back to last shrine   ESC  pause",
                 cx, cy + 120.0f, 16, { 0.55f, 0.6f, 0.75f, 1.0f }, Align::Center);
             break;

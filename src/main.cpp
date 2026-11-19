@@ -4,11 +4,16 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include <glgame2d/glgame2d.hpp>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #include "Audio.hpp"
 #include "Game.hpp"
@@ -147,10 +152,139 @@ void readKeyboard(glgame2d::Input& input, Controls& c)
     c.back |= input.isJustPressed(Key::KEY_ESCAPE);
 }
 
+struct Options
+{
+    int width = Gfx::BASE_W, height = Gfx::BASE_H;
+    bool fullscreen = false;
+    bool mute = false;
+};
+
+// Everything the game needs between frames. It lives on the heap: in the
+// browser main() returns to the event loop and its stack frame is reused.
+struct App
+{
+    explicit App(const Options& opt, const std::string& savePath)
+    {
+        const char* scriptPath = std::getenv("SPORE_SCRIPT");
+        scripted = scriptPath && script.load(scriptPath);
+        speed = std::getenv("SPORE_SPEED") ? std::max(1.0f, std::strtof(std::getenv("SPORE_SPEED"), nullptr)) : 1.0f;
+
+        window = std::make_unique<glgame2d::Window>(opt.width, opt.height, "Spore Lantern",
+            opt.fullscreen ? glgame2d::Window::WINDOWED_FULLSCREEN : glgame2d::Window::WINDOWED);
+        // The icon must be set before any Texture is created: Texture switches
+        // stb_image to "flip vertically" globally and setIcon() does not undo it.
+        window->setIcon("assets/gfx/icon.png");
+        window->enableVSync();
+
+        gfx = std::make_unique<Gfx>(*window);
+        audio = std::make_unique<Audio>(!opt.mute);
+        game = std::make_unique<Game>(*gfx, *audio, savePath);
+        game->setTrace(std::getenv("SPORE_TRACE") != nullptr);
+        perf = std::getenv("SPORE_PERF") != nullptr;
+    }
+
+    // One displayed frame. Returns false when the game should stop.
+    bool frame()
+    {
+        if (!running || window->shouldClose() || game->wantsQuit())
+            return false;
+
+        if (perf)
+            perfLog.frameStart();
+        input.begin(*window);
+        if (!scripted)
+            readKeyboard(input, controls);
+        if (input.isJustPressed(Key::KEY_F3))
+            game->toggleDebug();
+        if (input.isJustPressed(Key::KEY_F4))
+            game->toggleCoarseLight();
+
+        while (accumulator >= Game::STEP && running)
+        {
+            if (scripted)
+                running = script.apply(simTime, *game, controls);
+            game->step(controls);
+            controls.clearEdges();
+            accumulator -= Game::STEP;
+            simTime += Game::STEP;
+        }
+
+        game->render();
+        window->pollEvents();
+        if (perf)
+            perfLog.frameEnd(gfx->lastDrawCount());
+
+#ifdef __EMSCRIPTEN__
+        // The browser paces frames (requestAnimationFrame); sleeping here
+        // would block the page.
+        const float deltaTime = clock.tick(false);
+#else
+        const float deltaTime = clock.tick(true);
+#endif
+        game->setFrameTime(deltaTime);
+        audio->update(deltaTime);
+        // Long hitches (window drag, breakpoint, hidden tab) should not
+        // fast-forward the game.
+        accumulator += std::min(deltaTime, 0.1f) * speed;
+        return running;
+    }
+
+    std::unique_ptr<glgame2d::Window> window;
+    std::unique_ptr<Gfx> gfx;
+    std::unique_ptr<Audio> audio;
+    std::unique_ptr<Game> game;
+
+    Script script;
+    bool scripted = false;
+    float speed = 1.0f;
+
+    glgame2d::Input input;
+    Controls controls;
+    float accumulator = 0.0f;
+    float simTime = 0.0f;
+    bool running = true;
+    glgame2d::Clock clock{ 120.0f };
+    bool perf = false;
+    PerfLog perfLog;
+};
+
+#ifdef __EMSCRIPTEN__
+// Saves live in IndexedDB so they survive a page reload. The browser storage
+// has to be read (asynchronously) before the game starts and looks for a save.
+constexpr const char* WEB_SAVE_DIR = "/persist";
+bool g_StorageReady = false;
+App* g_App = nullptr;
+
+extern "C" EMSCRIPTEN_KEEPALIVE void spore_storage_ready() { g_StorageReady = true; }
+
+void webFrame()
+{
+    if (!g_StorageReady)
+        return;
+    if (!g_App)
+        g_App = new App{ Options{}, std::string{ WEB_SAVE_DIR } + "/save.txt" };
+    // There is nowhere to quit to in a browser tab, so a "quit" just keeps going.
+    g_App->frame();
+}
+#endif
+
 } // namespace
 
 int main(int argc, char** argv)
 {
+#ifdef __EMSCRIPTEN__
+    (void)argc; (void)argv;
+    EM_ASM({
+        FS.mkdir(UTF8ToString($0));
+        FS.mount(IDBFS, {}, UTF8ToString($0));
+        FS.syncfs(true, function(err) {
+            if (err) console.warn("Spore Lantern: could not read saved data", err);
+            Module._spore_storage_ready();
+        });
+    }, WEB_SAVE_DIR);
+    emscripten_set_main_loop(webFrame, 0, true);
+    return 0;
+#else
     // Assets are loaded with relative paths (the engine's Tilemap and Mixer
     // resolve against the working directory), and save.txt lives beside them,
     // so run from the executable's directory no matter where we were started.
@@ -163,23 +297,22 @@ int main(int argc, char** argv)
     }
 
     // Command line: --fullscreen, --size WIDTHxHEIGHT, --mute
-    int width = Gfx::BASE_W, height = Gfx::BASE_H;
-    bool fullscreen = false;
-    bool mute = std::getenv("SPORE_MUTE") != nullptr;
+    Options opt;
+    opt.mute = std::getenv("SPORE_MUTE") != nullptr;
     for (int i = 1; i < argc; i++)
     {
         const std::string arg = argv[i];
         if (arg == "--fullscreen")
-            fullscreen = true;
+            opt.fullscreen = true;
         else if (arg == "--mute")
-            mute = true;
+            opt.mute = true;
         else if (arg == "--size" && i + 1 < argc)
         {
             int w = 0, h = 0;
             if (std::sscanf(argv[++i], "%dx%d", &w, &h) == 2 && w >= 320 && h >= 240)
             {
-                width = w;
-                height = h;
+                opt.width = w;
+                opt.height = h;
             }
         }
         else
@@ -189,66 +322,8 @@ int main(int argc, char** argv)
         }
     }
 
-    Script script;
-    const char* scriptPath = std::getenv("SPORE_SCRIPT");
-    const bool scripted = scriptPath && script.load(scriptPath);
-    const float speed = std::getenv("SPORE_SPEED") ? std::max(1.0f, std::strtof(std::getenv("SPORE_SPEED"), nullptr)) : 1.0f;
-
-    glgame2d::Window window{ width, height, "Spore Lantern",
-        fullscreen ? glgame2d::Window::WINDOWED_FULLSCREEN : glgame2d::Window::WINDOWED };
-    // The icon must be set before any Texture is created: Texture switches
-    // stb_image to "flip vertically" globally and setIcon() does not undo it.
-    window.setIcon("assets/gfx/icon.png");
-    window.enableVSync();
-
-    Gfx gfx{ window };
-    Audio audio{ !mute };
-    Game game{ gfx, audio, "save.txt" };
-    game.setTrace(std::getenv("SPORE_TRACE") != nullptr);
-
-    glgame2d::Input input;
-    Controls controls;
-
-    float accumulator = 0.0f;
-    float simTime = 0.0f;
-    bool running = true;
-    glgame2d::Clock clock{ 120.0f };
-    const bool perf = std::getenv("SPORE_PERF") != nullptr;
-    PerfLog perfLog;
-
-    while (running && !window.shouldClose() && !game.wantsQuit())
-    {
-        if (perf)
-            perfLog.frameStart();
-        input.begin(window);
-        if (!scripted)
-            readKeyboard(input, controls);
-        if (input.isJustPressed(Key::KEY_F3))
-            game.toggleDebug();
-        if (input.isJustPressed(Key::KEY_F4))
-            game.toggleCoarseLight();
-
-        while (accumulator >= Game::STEP && running)
-        {
-            if (scripted)
-                running = script.apply(simTime, game, controls);
-            game.step(controls);
-            controls.clearEdges();
-            accumulator -= Game::STEP;
-            simTime += Game::STEP;
-        }
-
-        game.render();
-        window.pollEvents();
-        if (perf)
-            perfLog.frameEnd(gfx.lastDrawCount());
-
-        const float deltaTime = clock.tick(true);
-        game.setFrameTime(deltaTime);
-        audio.update(deltaTime);
-        // Long hitches (window drag, breakpoint) should not fast-forward the game.
-        accumulator += std::min(deltaTime, 0.1f) * speed;
-    }
-
+    App app{ opt, "save.txt" };
+    while (app.frame()) {}
     return 0;
+#endif
 }

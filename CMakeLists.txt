@@ -16,11 +16,17 @@ endif()
 set(GLGAME2D_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLGAME2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
+# The source can be pointed elsewhere, which the web build needs until the
+# engine's web support is merged upstream, e.g.
+#   -DGLGAME2D_GIT_REPOSITORY=/path/to/glgame2d -DGLGAME2D_GIT_TAG=web-build
+set(GLGAME2D_GIT_REPOSITORY "https://github.com/VarunVF/glgame2d.git" CACHE STRING "Where to fetch glgame2d from")
+set(GLGAME2D_GIT_TAG "main" CACHE STRING "glgame2d branch, tag or commit")
+
 include(FetchContent)
 FetchContent_Declare(
     glgame2d
-    GIT_REPOSITORY https://github.com/VarunVF/glgame2d.git
-    GIT_TAG        main
+    GIT_REPOSITORY ${GLGAME2D_GIT_REPOSITORY}
+    GIT_TAG        ${GLGAME2D_GIT_TAG}
 )
 FetchContent_MakeAvailable(glgame2d)
 
@@ -48,6 +54,24 @@ target_link_libraries(spore-lantern PRIVATE glgame2d)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(spore-lantern PRIVATE -Wall -Wextra)
+endif()
+
+if(EMSCRIPTEN)
+    # Web build: spore-lantern.html + .js + .wasm + .data (the packed assets).
+    set_target_properties(spore-lantern PROPERTIES SUFFIX ".html")
+    target_link_options(spore-lantern PRIVATE
+        "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets@/assets"
+        "SHELL:--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
+        "SHELL:-sALLOW_MEMORY_GROWTH=1"
+        "SHELL:-sEXPORTED_RUNTIME_METHODS=FS,ENV,addRunDependency,removeRunDependency"
+        "-lidbfs.js"
+    )
+    set_property(TARGET spore-lantern APPEND PROPERTY LINK_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+    # Repack when an asset changes (the .data file is made at link time).
+    file(GLOB_RECURSE SPORE_ASSET_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/*)
+    set_property(TARGET spore-lantern APPEND PROPERTY LINK_DEPENDS ${SPORE_ASSET_FILES})
+    return()
 endif()
 
 # The game looks for assets/ next to the executable. This runs on every build

@@ -1,6 +1,6 @@
 # Friction log — building Spore Lantern on glgame2d
 
-Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `2033fd78fe35bd2257a66fbb00b7111c0a2f8cea` (`main`; the repository has no tags).
+Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `669d238d4e42d43c102cc2dd7a6e343faddd7f2e` (`main`; the repository has no tags).
 Platform: Ubuntu 24.04, GCC 13.3, CMake 3.28, X11.
 
 Every entry has four parts: **Wanted**, **Did instead**, **Area**, **Kind**
@@ -18,6 +18,7 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 | --- | --- | --- | --- |
 | 1. Every sprite draw asks the window system for the window size | `2033fd7` | `Window` caches its window and framebuffer sizes and updates them in GLFW callbacks. | Moved to `getWindowSize()`; frame work 16–18 ms → 6 ms (measured); the baked map was then dropped for `Tilemap::render()`. |
 | 32. Engine classes print to the console directly | `5f06002` | Engine classes log through `glgame2d::logging`. | Nothing to change. |
+| 35. The engine could not target the web without changes | `669d238` | Emscripten support: GL header that picks glad or GLES3, GLSL ES shader translation, no glad or `glPolygonMode` on the web, a CMake branch for Emscripten's GLFW and WebGL 2, and no colour codes in browser console logs. | Web build merged into `main`; builds from GitHub with no overrides. |
 
 ---
 
@@ -319,3 +320,33 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 - **Detail:** `Clock::tick(true)` sleeps to cap the frame rate, which works; there is just nothing above it. The engine example passes the raw frame delta straight into `Entity::update`, which makes jump height depend on frame rate.
 - **Area:** other
 - **Kind:** missing feature (minor).
+
+## Web (found while trying the browser build)
+
+These came up while porting the game to the browser. Entry 35 is fixed
+upstream; 36 and 37 are still open.
+
+### 35. The engine could not target the web without changes
+
+- **Wanted:** Build the unchanged engine with Emscripten.
+- **Did instead:** Four commits on an engine branch: one GL header that picks glad or GLES3, a GLSL 330 → GLSL ES 3.00 rewrite in `Shader`, no glad loading or `glPolygonMode` on the web, and a CMake branch that uses Emscripten's GLFW port and links for WebGL 2.
+- **Detail:** The engine's shaders are hard-coded `#version 330 core` strings inside headers, so a game cannot supply web versions itself; CMake always fetches and builds desktop GLFW and glad; `GL_STACK_OVERFLOW` is not defined in ES headers. Everything else (textures, VAOs, the font atlas's `GL_R8`, miniaudio, `std::ifstream` asset loading, the Tiled loader) worked unchanged.
+- **Area:** rendering / build
+- **Kind:** missing feature.
+- **Status:** fixed in `669d238`, which also stops the console sink adding ANSI colour codes under Emscripten (the browser console printed them as text). The game's web build now fetches the engine from GitHub like the desktop build.
+
+### 36. Key presses shorter than one frame are lost
+
+- **Wanted:** Every key press seen at least once.
+- **Did instead:** Nothing in the game; noticed when automated presses in a throttled browser tab did nothing.
+- **Detail:** `Keyboard::begin()` polls `glfwGetKey()` for all 349 keys once per frame, so a press and release between two polls never shows up as "just pressed". People rarely press that fast at 60 fps, but at low frame rates (a background tab runs at 1–2 fps) taps vanish. GLFW's key callback would queue them.
+- **Area:** input
+- **Kind:** bug (minor).
+
+### 37. `Clock::tick(true)` sleeps the thread
+
+- **Wanted:** One frame-pacing call that works on every platform.
+- **Did instead:** `tick(false)` in the browser, where `requestAnimationFrame` paces frames.
+- **Detail:** Sleeping blocks the browser's only thread. Frame pacing on the web has to come from the browser's main loop (`emscripten_set_main_loop`), which also means the game cannot own a `while` loop; the game's loop body had to move into a per-frame function with its state on the heap.
+- **Area:** timing
+- **Kind:** missing feature.
