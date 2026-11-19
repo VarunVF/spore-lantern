@@ -41,7 +41,11 @@ const glgame2d::Texture* Gfx::tex(const std::string& name)
 
 bool Gfx::beginFrame()
 {
-    m_Window.getSize(&m_WinW, &m_WinH);
+    // Window size (not framebuffer size): the engine's renderer and camera
+    // measure the world in window units.
+    const auto size = m_Window.getWindowSize();
+    m_WinW = size.width;
+    m_WinH = size.height;
     if (m_WinW <= 0 || m_WinH <= 0)
         return false;
 
