@@ -15,7 +15,7 @@ potion, and throw it at the slime that seals the exit.
 | | |
 | --- | --- |
 | Repository | https://github.com/VarunVF/glgame2d |
-| **Pinned commit** | **`669d238d4e42d43c102cc2dd7a6e343faddd7f2e`** ("Support building for the web with Emscripten") |
+| **Pinned commit** | **`49a6035704db2d65888dedb3ced690be5c2dbee3`** ("Add MIT License to the project") |
 | First built against | `58312b47956e48200a6422834cc1c0a43204a057` ("Update GLCall macro") |
 
 The engine is fetched with CMake `FetchContent`; nothing from it is vendored or
@@ -221,5 +221,5 @@ Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
 The game's code, tools, level and generated art and sound are under the
 [MIT License](LICENSE). The font in `assets/fonts/` is not: it keeps its own
 SIL Open Font License (`assets/fonts/OFL.txt`); see `ASSETS.md`. The engine is
-fetched at build time and not redistributed here, and is licensed
-separately in its own repository.
+fetched at build time and not redistributed here; it is also under the MIT
+License, in its own repository.

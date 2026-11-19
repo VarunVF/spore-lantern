@@ -1,6 +1,6 @@
 # Friction log — building Spore Lantern on glgame2d
 
-Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `669d238d4e42d43c102cc2dd7a6e343faddd7f2e` (`main`; the repository has no tags).
+Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `49a6035704db2d65888dedb3ced690be5c2dbee3` (`main`; the repository has no tags).
 Platform: Ubuntu 24.04, GCC 13.3, CMake 3.28, X11.
 
 Every entry has four parts: **Wanted**, **Did instead**, **Area**, **Kind**
@@ -19,6 +19,7 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 | 1. Every sprite draw asks the window system for the window size | `2033fd7` | `Window` caches its window and framebuffer sizes and updates them in GLFW callbacks. | Moved to `getWindowSize()`; frame work 16–18 ms → 6 ms (measured); the baked map was then dropped for `Tilemap::render()`. |
 | 32. Engine classes print to the console directly | `5f06002` | Engine classes log through `glgame2d::logging`. | Nothing to change. |
 | 35. The engine could not target the web without changes | `669d238` | Emscripten support: GL header that picks glad or GLES3, GLSL ES shader translation, no glad or `glPolygonMode` on the web, a CMake branch for Emscripten's GLFW and WebGL 2, and no colour codes in browser console logs. | Web build merged into `main`; builds from GitHub with no overrides. |
+| 33. No licence file for the engine itself | `49a6035` | MIT `LICENSE` added. | README says so; the game is MIT too. |
 
 ---
 
@@ -312,6 +313,7 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 - **Did instead:** Linked to the engine and noted that only `THIRD_PARTY_LICENSES.md` exists upstream. The game does not vendor or redistribute engine source; it is fetched at configure time.
 - **Area:** other
 - **Kind:** missing feature.
+- **Status:** fixed in `49a6035` (MIT License). The game's pin moved to that commit; it changes no code.
 
 ### 34. No frame-rate-independent game loop helper
 
