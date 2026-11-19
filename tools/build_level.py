@@ -8,8 +8,7 @@ The ASCII file is the single source of truth. This script writes:
 - an object layer of tile objects for the decoration ('v' stalactite,
   'm' mushroom, 'c' crystal). The engine draws tile objects and gives them no
   collision, which is its way of having non-solid tiles;
-- assets/gfx/decor.png, the tileset image for those objects;
-- assets/gfx/cave.png, both layers composed into one picture.
+- assets/gfx/decor.png, the tileset image for those objects.
 
 The game still reads level.txt itself for things it has to know about (player
 start, spores, spikes, shrine, slime, door, and where the crystals glow),
@@ -157,31 +156,11 @@ def main():
         "margin": 0,
         "spacing": 0,
     }
-    # The engine's Tilemap::render() draws every tile and object of the map each
-    # frame, one draw call each and with no culling. Bake the same picture into
-    # a single image the game can draw as one sprite instead (objects first,
-    # then tiles, which is the order the engine draws them in). The Tilemap is
-    # still what the player collides with, and F5 in the game switches to the
-    # engine's own rendering for comparison.
-    atlas = Image.open(gfx / "tiles.png").convert("RGBA")
-    baked = Image.new("RGBA", (width * TILE, height * TILE), (0, 0, 0, 0))
-    for obj in objects:
-        index = obj["gid"] - DECOR_FIRSTGID
-        tile = decor_image.crop((index * TILE, 0, (index + 1) * TILE, TILE))
-        baked.alpha_composite(tile, (obj["x"], obj["y"] - obj["height"]))
-    for i, gid in enumerate(data):
-        if gid == 0:
-            continue
-        index = gid - 1
-        sx, sy = (index % COLUMNS) * TILE, (index // COLUMNS) * TILE
-        baked.alpha_composite(atlas.crop((sx, sy, sx + TILE, sy + TILE)), ((i % width) * TILE, (i // width) * TILE))
-    baked.save(gfx / "cave.png")
-
     (LEVEL / "cave.tmj").write_text(json.dumps(tmj))
     (LEVEL / "tiles.tsj").write_text(json.dumps(tsj, indent=1))
     (LEVEL / "decor.tsj").write_text(json.dumps(decor_tsj, indent=1))
     print(f"wrote cave.tmj ({width}x{height}, {len(objects)} decoration objects), "
-          "tiles.tsj, decor.tsj, gfx/decor.png and gfx/cave.png")
+          "tiles.tsj, decor.tsj and gfx/decor.png")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,6 @@ using Key = glgame2d::Keyboard;
 //   SPORE_SPEED=<n>       run the simulation n times faster
 //   SPORE_TRACE=1         log the player position a few times a second
 //   SPORE_MUTE=1          do not open an audio device (same as --mute)
-//   SPORE_ENGINE_TILEMAP=1  start with the map drawn by Tilemap::render() (F5)
 //   SPORE_PERF=1          log frame work time and sprite count every 5 s
 // Steps run in order; each waits for its condition, then applies its action.
 // Conditions: "12.5" (simulation time), "+0.3" (seconds after the previous
@@ -206,8 +205,6 @@ int main(int argc, char** argv)
     Audio audio{ !mute };
     Game game{ gfx, audio, "save.txt" };
     game.setTrace(std::getenv("SPORE_TRACE") != nullptr);
-    if (std::getenv("SPORE_ENGINE_TILEMAP"))
-        game.toggleEngineTilemapRender();
 
     glgame2d::Input input;
     Controls controls;
@@ -230,8 +227,6 @@ int main(int argc, char** argv)
             game.toggleDebug();
         if (input.isJustPressed(Key::KEY_F4))
             game.toggleCoarseLight();
-        if (input.isJustPressed(Key::KEY_F5))
-            game.toggleEngineTilemapRender();
 
         while (accumulator >= Game::STEP && running)
         {

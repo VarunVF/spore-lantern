@@ -69,7 +69,6 @@ public:
     void toggleDebug() { m_Debug = !m_Debug; }
     void toggleCoarseLight() { m_CoarseLight = !m_CoarseLight; m_LightManual = true; }
 
-    void toggleEngineTilemapRender() { m_EngineTilemapRender = !m_EngineTilemapRender; }
 
     // read-only state for the scripted play-test in main.cpp
     glm::vec2 playerPosition() const { return m_Player.topLeft(); }
@@ -169,7 +168,6 @@ private:
     bool m_Trace = false;
     bool m_CoarseLight = false;
     bool m_LightManual = false;
-    bool m_EngineTilemapRender = false;     // F5: draw the map through Tilemap::render()
     float m_SlowTime = 0.0f;
     float m_FrameTime = 0.0f;
 

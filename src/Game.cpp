@@ -1013,20 +1013,10 @@ void Game::renderWorld()
     }
 
     // The cave: solid tiles plus the decoration object layer of the Tiled map.
-    // Normally this is the picture tools/build_level.py baked from that map,
-    // drawn as one sprite. m_Tilemap.render() shows the same thing (F5), but
-    // it issues a draw call for every tile and object of the whole map every
-    // frame, and each engine draw call also asks the window system for the
-    // window size.
-    if (m_EngineTilemapRender)
-    {
-        m_Tilemap.render(g.renderer(), g.window());
-        g.countExternalDraws(static_cast<int>(m_Tilemap.getRects().size() + m_Level.decor.size()));
-    }
-    else
-    {
-        g.draw(g.tex("cave"), { 0.0f, 0.0f }, { m_Level.pixelWidth(), m_Level.pixelHeight() });
-    }
+    // The engine draws every tile and object of the map, visible or not
+    // (about 890 draw calls); since glgame2d 2033fd7 that costs about 1 ms.
+    m_Tilemap.render(g.renderer(), g.window());
+    g.countExternalDraws(static_cast<int>(m_Tilemap.getRects().size() + m_Level.decor.size()));
 
     for (const Level::Cell& cell : m_Level.spikes)
         g.draw(g.tex("spikes"), Level::cellTopLeft(cell), { TILE, TILE });
