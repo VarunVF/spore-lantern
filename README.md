@@ -15,16 +15,22 @@ potion, and throw it at the slime that seals the exit.
 | | |
 | --- | --- |
 | Repository | https://github.com/VarunVF/glgame2d |
-| Fetched ref | `main` (the repository has no tags) |
-| **Commit used** | **`669d238d4e42d43c102cc2dd7a6e343faddd7f2e`** ("Support building for the web with Emscripten") |
+| **Pinned commit** | **`669d238d4e42d43c102cc2dd7a6e343faddd7f2e`** ("Support building for the web with Emscripten") |
 | First built against | `58312b47956e48200a6422834cc1c0a43204a057` ("Update GLCall macro") |
 
 The engine is fetched with CMake `FetchContent`; nothing from it is vendored or
-modified here, and no local override is used. CMake prints the commit it
-fetched (`-- glgame2d commit: ...`). Because the ref is a branch, a later
-checkout may fetch a newer commit; the one above is what this game was built
-and tested against. Engine fixes made since the first version are tracked in
-`FRICTION.md` under "Fixed upstream".
+modified here, and no local override is used. The game is pinned to the
+commit above (`GLGAME2D_PINNED_COMMIT` in `CMakeLists.txt`) rather than
+tracking `main`, because the engine's API is still changing. CMake prints the
+commit it fetched (`-- glgame2d commit: ...`).
+
+To move to a newer engine: change `GLGAME2D_PINNED_COMMIT`, build, run
+`tests/run_playtest.sh` (and `tests/run_web_playtest.sh`), then update the
+commit here and in `FRICTION.md`. To try an engine branch without changing the
+pin, configure with `-DGLGAME2D_REF=<branch or commit>` (and
+`-DGLGAME2D_GIT_REPOSITORY=/path/to/glgame2d` for a local checkout). Engine
+fixes made since the first version are tracked in `FRICTION.md` under
+"Fixed upstream".
 
 ## Build
 
@@ -87,9 +93,6 @@ run in headless Chrome, and publishes it to GitHub Pages
 (`.github/workflows/pages.yml`). Saves are kept in the browser's IndexedDB
 under the name `/spore-lantern`, so other pages on the same origin do not
 share them.
-
-`GLGAME2D_GIT_REPOSITORY` and `GLGAME2D_GIT_TAG` can point either build at
-another engine checkout or branch; by default both fetch GitHub `main`.
 
 Differences in the browser:
 

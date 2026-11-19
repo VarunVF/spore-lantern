@@ -11,22 +11,31 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # --- Engine: glgame2d, fetched as an external dependency -------------------
-# The upstream repository has no tags, so we track main. The exact commit
-# that was fetched is printed below and recorded in README.md.
+# Pinned to a commit so engine API changes on main do not break this game
+# until it is updated for them. To move to a newer engine: change
+# GLGAME2D_PINNED_COMMIT, rebuild, run tests/run_playtest.sh, and update the
+# commit recorded in README.md and FRICTION.md.
+set(GLGAME2D_PINNED_COMMIT 669d238d4e42d43c102cc2dd7a6e343faddd7f2e)
 set(GLGAME2D_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLGAME2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-# The source can be pointed elsewhere, which the web build needs until the
-# engine's web support is merged upstream, e.g.
-#   -DGLGAME2D_GIT_REPOSITORY=/path/to/glgame2d -DGLGAME2D_GIT_TAG=web-build
+# Overrides, e.g. to try an engine branch before it is pinned:
+#   -DGLGAME2D_REF=main
+#   -DGLGAME2D_GIT_REPOSITORY=/path/to/glgame2d -DGLGAME2D_REF=my-branch
 set(GLGAME2D_GIT_REPOSITORY "https://github.com/VarunVF/glgame2d.git" CACHE STRING "Where to fetch glgame2d from")
-set(GLGAME2D_GIT_TAG "main" CACHE STRING "glgame2d branch, tag or commit")
+set(GLGAME2D_REF "" CACHE STRING "glgame2d branch, tag or commit to use instead of the pinned commit")
+if(GLGAME2D_REF)
+    set(GLGAME2D_FETCH_REF ${GLGAME2D_REF})
+    message(STATUS "glgame2d: using ${GLGAME2D_REF} instead of the pinned ${GLGAME2D_PINNED_COMMIT}")
+else()
+    set(GLGAME2D_FETCH_REF ${GLGAME2D_PINNED_COMMIT})
+endif()
 
 include(FetchContent)
 FetchContent_Declare(
     glgame2d
     GIT_REPOSITORY ${GLGAME2D_GIT_REPOSITORY}
-    GIT_TAG        ${GLGAME2D_GIT_TAG}
+    GIT_TAG        ${GLGAME2D_FETCH_REF}
 )
 FetchContent_MakeAvailable(glgame2d)
 
