@@ -81,6 +81,8 @@ Recorded as they happened. Reasons and measurements are in FRICTION.md.
   (after the engine's example showed that this works).
 - Map drawn as one baked image instead of `Tilemap::render()`
   (one draw call per tile, no culling, costly per sprite on X11).
+  Reverted after engine commit `2033fd7` removed the per-sprite cost:
+  the map is now drawn by `Tilemap::render()`.
 - Lighting became a grid of 16 px squares in 8 alpha steps
   (no tint, alpha, blend modes or render targets).
 - Slime moves with its own code on a flat floor
