@@ -218,7 +218,8 @@ Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
 
 ## Licence
 
-Game code and generated assets: see `ASSETS.md` for the assets. The font is
-under the SIL Open Font License. The engine has no licence file of its own
-upstream (only `THIRD_PARTY_LICENSES.md`); it is fetched at build time and not
-redistributed here.
+The game's code, tools, level and generated art and sound are under the
+[MIT License](LICENSE). The font in `assets/fonts/` is not: it keeps its own
+SIL Open Font License (`assets/fonts/OFL.txt`); see `ASSETS.md`. The engine is
+fetched at build time and not redistributed here, and is licensed
+separately in its own repository.

@@ -24,5 +24,6 @@ this repository. No third-party art or audio was used, traced or sampled.
 | `assets/level/level.txt` | hand-written | The level. |
 | `assets/level/cave.tmj`, `assets/level/tiles.tsj`, `assets/level/decor.tsj` | `tools/build_level.py` | Tiled-format JSON generated from `level.txt`. |
 
-These generated assets carry no third-party rights. The repository owner may
-license them as they see fit.
+These generated assets carry no third-party rights and are under the
+repository's [MIT License](LICENSE), like the code. The font above is the
+exception: it stays under the SIL Open Font License.
