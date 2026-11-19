@@ -1,0 +1,71 @@
+# Builds the web version with Emscripten, plays the scripted run in headless
+# Chrome, and publishes the result to GitHub Pages.
+name: Web build to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push replaces a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  EMSDK_VERSION: 7.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Emscripten SDK
+        uses: actions/cache@v4
+        with:
+          path: emsdk
+          key: emsdk-${{ env.EMSDK_VERSION }}-${{ runner.os }}
+
+      - name: Install Emscripten SDK
+        run: |
+          if [ ! -d emsdk ]; then
+            git clone --depth 1 https://github.com/emscripten-core/emsdk.git
+          fi
+          ./emsdk/emsdk install "$EMSDK_VERSION"
+          ./emsdk/emsdk activate "$EMSDK_VERSION"
+
+      - name: Build
+        run: |
+          source emsdk/emsdk_env.sh
+          emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-web -j
+
+      - name: Scripted playthrough in headless Chrome
+        run: CHROME="$(command -v google-chrome)" tests/run_web_playtest.sh build-web
+
+      - name: Assemble site
+        run: |
+          mkdir site
+          cp build-web/spore-lantern.html site/index.html
+          cp build-web/spore-lantern.js build-web/spore-lantern.wasm build-web/spore-lantern.data site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

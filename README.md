@@ -6,6 +6,8 @@ A small 2D platformer about carrying a light through a dark cave, built on the
 You are a lantern-bearer. Collect three glowing spores, brew them into a light
 potion, and throw it at the slime that seals the exit.
 
+**Play it in the browser:** https://varunvf.github.io/spore-lantern/
+
 ![The lantern-bearer on the ledge above the slime](docs/screenshot.png)
 
 ## Engine
@@ -79,6 +81,12 @@ python3 -m http.server 8000 --directory build-web
 Then open http://localhost:8000/spore-lantern.html. The output is
 `spore-lantern.html/.js/.wasm/.data`, about 3 MB, and can go on any static
 host. Add `?perf=1` to the URL to log frame statistics to the browser console.
+
+Every push to `main` rebuilds this with Emscripten 7.0.0, plays the scripted
+run in headless Chrome, and publishes it to GitHub Pages
+(`.github/workflows/pages.yml`). Saves are kept in the browser's IndexedDB
+under the name `/spore-lantern`, so other pages on the same origin do not
+share them.
 
 `GLGAME2D_GIT_REPOSITORY` and `GLGAME2D_GIT_TAG` can point either build at
 another engine checkout or branch; by default both fetch GitHub `main`.
