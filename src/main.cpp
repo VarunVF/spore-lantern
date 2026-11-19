@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -23,6 +24,7 @@ using Key = glgame2d::Keyboard;
 //   SPORE_TRACE=1         log the player position a few times a second
 //   SPORE_MUTE=1          do not open an audio device (same as --mute)
 //   SPORE_ENGINE_TILEMAP=1  start with the map drawn by Tilemap::render() (F5)
+//   SPORE_PERF=1          log frame work time and sprite count every 5 s
 // Steps run in order; each waits for its condition, then applies its action.
 // Conditions: "12.5" (simulation time), "+0.3" (seconds after the previous
 // step), "x>100" / "x<100" / "y>-500" / "y<-500" (player position),
@@ -96,6 +98,38 @@ struct Script
     std::vector<Step> steps;
     size_t next = 0;
     float lastTime = 0.0f;
+};
+
+// Frame statistics for SPORE_PERF: the time each frame spends on its own
+// work (input, simulation, drawing, swapping, events), without the sleep that
+// caps the frame rate.
+struct PerfLog
+{
+    using SteadyClock = std::chrono::steady_clock;
+
+    void frameStart() { start = SteadyClock::now(); }
+
+    void frameEnd(int sprites)
+    {
+        const auto now = SteadyClock::now();
+        work.push_back(std::chrono::duration<float, std::milli>(now - start).count());
+        spriteSum += sprites;
+        if (now - windowStart < std::chrono::seconds(5))
+            return;
+        std::vector<float> sorted = work;
+        std::sort(sorted.begin(), sorted.end());
+        auto pct = [&](float p) { return sorted[std::min(sorted.size() - 1, static_cast<size_t>(p * sorted.size()))]; };
+        const float seconds = std::chrono::duration<float>(now - windowStart).count();
+        glgame2d::logging::info("[Perf] fps {:.1f}  work p50 {:.2f} ms  p95 {:.2f} ms  max {:.2f} ms  sprites {}",
+            work.size() / seconds, pct(0.5f), pct(0.95f), sorted.back(), spriteSum / static_cast<long>(work.size()));
+        work.clear();
+        spriteSum = 0;
+        windowStart = now;
+    }
+
+    SteadyClock::time_point start{}, windowStart = SteadyClock::now();
+    std::vector<float> work;
+    long spriteSum = 0;
 };
 
 void readKeyboard(glgame2d::Input& input, Controls& c)
@@ -182,9 +216,13 @@ int main(int argc, char** argv)
     float simTime = 0.0f;
     bool running = true;
     glgame2d::Clock clock{ 120.0f };
+    const bool perf = std::getenv("SPORE_PERF") != nullptr;
+    PerfLog perfLog;
 
     while (running && !window.shouldClose() && !game.wantsQuit())
     {
+        if (perf)
+            perfLog.frameStart();
         input.begin(window);
         if (!scripted)
             readKeyboard(input, controls);
@@ -207,6 +245,8 @@ int main(int argc, char** argv)
 
         game.render();
         window.pollEvents();
+        if (perf)
+            perfLog.frameEnd(gfx.lastDrawCount());
 
         const float deltaTime = clock.tick(true);
         game.setFrameTime(deltaTime);
