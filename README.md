@@ -15,7 +15,7 @@ potion, and throw it at the slime that seals the exit.
 | | |
 | --- | --- |
 | Repository | https://github.com/VarunVF/glgame2d |
-| **Pinned commit** | **`49a6035704db2d65888dedb3ced690be5c2dbee3`** ("Add MIT License to the project") |
+| **Pinned commit** | **`3d3f8fd61e6cf809bbdf04198044ba4a343f069a`** ("Add Texture filter and wrap config") |
 | First built against | `58312b47956e48200a6422834cc1c0a43204a057` ("Update GLCall macro") |
 
 The engine is fetched with CMake `FetchContent`; nothing from it is vendored or

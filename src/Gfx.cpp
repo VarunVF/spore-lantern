@@ -8,6 +8,12 @@ namespace {
 
 constexpr const char* FONT_PATH = "assets/fonts/PressStart2P-Regular.ttf";
 
+// Pixel art stays crisp at any scale or sub-pixel offset. Wrap stays at the
+// engine default (repeat): the sprite UV path samples outside [0, 1].
+const glgame2d::Texture::Config PIXEL_ART{
+    .filterMode = glgame2d::Texture::FilterMode::Nearest,
+};
+
 } // namespace
 
 Gfx::Gfx(glgame2d::Window& window)
@@ -22,7 +28,7 @@ Gfx::Gfx(glgame2d::Window& window)
     for (const auto& entry : fs::directory_iterator{ "assets/gfx", ec })
     {
         if (entry.path().extension() == ".png")
-            m_Textures.try_emplace(entry.path().stem().string(), entry.path());
+            m_Textures.try_emplace(entry.path().stem().string(), entry.path(), PIXEL_ART);
     }
     if (m_Textures.empty())
         glgame2d::logging::error("[Gfx] No textures found in assets/gfx");

@@ -1,6 +1,6 @@
 # Friction log — building Spore Lantern on glgame2d
 
-Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `49a6035704db2d65888dedb3ced690be5c2dbee3` (`main`; the repository has no tags).
+Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `3d3f8fd61e6cf809bbdf04198044ba4a343f069a` (`main`; the repository has no tags).
 Platform: Ubuntu 24.04, GCC 13.3, CMake 3.28, X11.
 
 Every entry has four parts: **Wanted**, **Did instead**, **Area**, **Kind**
@@ -20,6 +20,7 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 | 32. Engine classes print to the console directly | `5f06002` | Engine classes log through `glgame2d::logging`. | Nothing to change. |
 | 35. The engine could not target the web without changes | `669d238` | Emscripten support: GL header that picks glad or GLES3, GLSL ES shader translation, no glad or `glPolygonMode` on the web, a CMake branch for Emscripten's GLFW and WebGL 2, and no colour codes in browser console logs. | Web build merged into `main`; builds from GitHub with no overrides. |
 | 33. No licence file for the engine itself | `49a6035` | MIT `LICENSE` added. | README says so; the game is MIT too. |
+| 13. Texture filtering is fixed to linear *(partly)* | `3d3f8fd` | `Texture::Config` picks the filter (linear or nearest) and wrap mode (repeat, mirrored repeat, clamp to edge) per texture. | Game textures load with nearest filtering. Still open: textures do not report their size, and `Tilemap` loads its tilesets with the default config. |
 
 ---
 
@@ -139,6 +140,7 @@ Entries are kept as written, with a **Status** line added when the engine fixes 
 - **Wanted:** Crisp pixel art drawn at 2× from small source images; sprite-sheet frames addressed in pixels.
 - **Did instead:** `tools/make_art.py` upscales all pixel art 2× with nearest-neighbour so textures are drawn 1:1, and the game rounds draw positions and the camera to whole pixels. Frames are addressed as "frame i of n" because the game cannot ask a `Texture` for its width or height; sprite sizes are hard-coded next to each draw.
 - **Detail:** `GL_LINEAR` and `GL_REPEAT` are hard-coded in `Texture`. Mipmaps are generated but the minification filter does not use them.
+- **Status:** partly fixed in `3d3f8fd`. `Texture(path, Config)` takes a `FilterMode` (`Linear`, `Nearest`) and a `WrapMode` (`Repeat`, `MirroredRepeat`, `ClampToEdge`); the defaults are still linear and repeat, because sprite UVs sample outside [0, 1], and mipmaps are no longer generated. The game now loads every texture with `FilterMode::Nearest`, so a sprite stays crisp even if it lands off the pixel grid; the 2× pre-scaled art and whole-pixel rounding are kept, so the picture is unchanged. Still open: a `Texture` cannot report its width or height, and `Tilemap` builds its tileset textures with the default config, so the map stays linear-filtered (harmless while it is drawn 1:1 on whole pixels).
 - **Area:** rendering / assets
 - **Kind:** missing feature.
 

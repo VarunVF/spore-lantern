@@ -15,7 +15,7 @@ endif()
 # until it is updated for them. To move to a newer engine: change
 # GLGAME2D_PINNED_COMMIT, rebuild, run tests/run_playtest.sh, and update the
 # commit recorded in README.md and FRICTION.md.
-set(GLGAME2D_PINNED_COMMIT 49a6035704db2d65888dedb3ced690be5c2dbee3)
+set(GLGAME2D_PINNED_COMMIT 3d3f8fd61e6cf809bbdf04198044ba4a343f069a)
 set(GLGAME2D_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLGAME2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
