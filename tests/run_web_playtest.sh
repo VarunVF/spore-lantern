@@ -38,7 +38,7 @@ timeout "${WEB_PLAYTEST_SECONDS:-60}" "$chrome" --headless --no-sandbox \
     --enable-logging=stderr --v=0 "$url" > "$log" 2>&1 || true
 
 status=0
-for expected in "Spore collected (3/3)" "Saved to /persist/save.txt" "Potion brewed" "Potion thrown" \
+for expected in "Spore collected (3/3)" "Saved to /spore-lantern/save.txt" "Potion brewed" "Potion thrown" \
                 "Slime defeated" "Door open" "WON in" "Level reset after win"; do
     if grep -qF "$expected" "$log"; then
         echo "ok    $expected"

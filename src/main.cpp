@@ -251,7 +251,10 @@ struct App
 #ifdef __EMSCRIPTEN__
 // Saves live in IndexedDB so they survive a page reload. The browser storage
 // has to be read (asynchronously) before the game starts and looks for a save.
-constexpr const char* WEB_SAVE_DIR = "/persist";
+// IndexedDB is shared by every page on an origin (e.g. all of a user's GitHub
+// Pages sites), and Emscripten names the database after the mount point, so
+// the mount point is specific to this game.
+constexpr const char* WEB_SAVE_DIR = "/spore-lantern";
 bool g_StorageReady = false;
 App* g_App = nullptr;
 
