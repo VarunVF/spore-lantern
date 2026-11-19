@@ -1,6 +1,6 @@
 # Friction log — building Spore Lantern on glgame2d
 
-Engine: `VarunVF/glgame2d` at commit `58312b47956e48200a6422834cc1c0a43204a057` (`main`; the repository has no tags).
+Engine: `VarunVF/glgame2d`, first at commit `58312b47956e48200a6422834cc1c0a43204a057`, now at `2033fd78fe35bd2257a66fbb00b7111c0a2f8cea` (`main`; the repository has no tags).
 Platform: Ubuntu 24.04, GCC 13.3, CMake 3.28, X11.
 
 Every entry has four parts: **Wanted**, **Did instead**, **Area**, **Kind**
@@ -9,6 +9,15 @@ Every entry has four parts: **Wanted**, **Did instead**, **Area**, **Kind**
 neighbouring problem; everything else was run into directly.
 
 The first five are the ones that shaped the game the most.
+
+## Fixed upstream
+
+Entries are kept as written, with a **Status** line added when the engine fixes them.
+
+| Entry | Fixed in | What changed | Game |
+| --- | --- | --- | --- |
+| 1. Every sprite draw asks the window system for the window size | `2033fd7` | `Window` caches its window and framebuffer sizes and updates them in GLFW callbacks. | Moved to `getWindowSize()`; frame work 16–18 ms → 6 ms (measured). |
+| 32. Engine classes print to the console directly | `5f06002` | Engine classes log through `glgame2d::logging`. | Nothing to change. |
 
 ---
 
@@ -21,6 +30,7 @@ The first five are the ones that shaped the game the most.
 - **Detail:** `Renderer::drawSprite(window, sprite)` calls `window.getSize()` on every call to turn pixels into clip space. On X11, `glfwGetWindowSize` is a synchronous round trip to the X server. Measured in isolation under Xvfb: 17.8 µs per call. The first playable build drew about 1,460 sprites a frame (861 tiles + about 600 others) and took 35–45 ms per frame; without the tilemap and darkness it took 8 ms (frame cap). The 861 tile draws alone cost about 16 ms, which is 861 × 18 µs. This was measured with a software rasteriser, but the round trip is independent of the GPU.
 - **Area:** rendering
 - **Kind:** bug (performance). Caching the size once per frame, or in the framebuffer-size callback the Window already installs, would remove it.
+- **Status:** fixed in `2033fd7` (window and framebuffer sizes cached, updated from callbacks; `getSize()` replaced by `getWindowSize()` / `getFramebufferSize()`). Re-measured with `SPORE_PERF=1` over the scripted playthrough, same virtual display and software renderer: baked map 16–18 ms → 5.6–6.1 ms of work per frame at 300–400 sprites (now at the 120 fps cap); engine-drawn map (`F5`) 40–42 ms at about 1,070 sprites with coarse lighting forced on → 6.7–7.2 ms at about 1,250 sprites with full lighting. A sprite now costs roughly 1 µs here, so the 400-sprite budget no longer applies. The workarounds above are still in the game.
 
 ### 2. `Entity::update()` resolves collisions but tells you nothing about them
 
@@ -44,7 +54,7 @@ The first five are the ones that shaped the game the most.
 - **Did instead:** The level is an ASCII file (`assets/level/level.txt`). `tools/build_level.py` turns it into a Tiled JSON map: the `#` cells become a solid tile layer and the decoration (stalactites, mushrooms, crystals) becomes an object layer of non-solid tile objects. The game parses the same ASCII file itself for everything it needs a position for (spawn, spores, spikes, shrine, slime, door, crystal glows) and draws spikes and props as its own sprites.
 - **Detail:** Non-solid tiles *are* supported, through object layers: a tile object (an object with a `gid`) is drawn by `Tilemap::render()` and gets no collision rectangle, which is how the engine's own example map does it. I missed this at first and wrote here that every tile is solid; that was wrong and is corrected. Checked afterwards with a test map: three tile objects in open air were rendered, the collision rectangle count was unchanged (865 with and without the layer), and a dropped `Entity` fell through them to the floor. What is true: every tile in a *tile layer* is solid, in every tile layer, so non-solid tiles cannot be painted on a grid layer and must be placed as objects.
   The part that still forced the ASCII file: there is no "what tile is at (x, y)", and no access to tile ids, layer names, Tiled custom properties or the objects themselves, so the game cannot read where a spawn point, a spore or a spike is from the map. The loader also reads `object["gid"]` unconditionally, so point or rectangle objects (the usual way to place markers) are not supported *(read, not hit)*. A failed load only logs; there is no way to ask the Tilemap whether it loaded.
-  Decoration now lives in an object layer of the map. The game still does not call `Tilemap::render()` in normal play (entries 1 and 9); it draws a picture baked from the same two layers. `F5` switches to the engine's rendering: a paused frame looked the same both ways (29 objects and all tiles in place; pixel differences of at most 9/255, confined to the flickering lantern light), at 1,066 sprites and 30 ms instead of 336 sprites and 13.5 ms.
+  Decoration now lives in an object layer of the map. The game still does not call `Tilemap::render()` in normal play (entries 1 and 9); it draws a picture baked from the same two layers. `F5` switches to the engine's rendering: a paused frame looked the same both ways (29 objects and all tiles in place; pixel differences of at most 9/255, confined to the flickering lantern light), at 1,066 sprites and 30 ms instead of 336 sprites and 13.5 ms (before entry 1 was fixed; now about 7 ms against 6 ms).
 - **Area:** collision / assets
 - **Kind:** missing feature (map queries, markers). Non-solid tiles: not a gap, only undocumented.
 
@@ -94,7 +104,7 @@ The first five are the ones that shaped the game the most.
 
 - **Wanted:** Draw the visible part of a 70×22 map.
 - **Did instead:** `tools/build_level.py` composes the tile layer into one 2240×704 PNG and the game draws it as a single sprite. The `Tilemap` object is still loaded and used for all collision; its `render()` is not called.
-- **Detail:** No culling against the camera, one draw call and three uniform uploads per tile, no batching. With entry 1 that was 861 X round trips per frame.
+- **Detail:** No culling against the camera, one draw call and three uniform uploads per tile, no batching. With entry 1 that was 861 X round trips per frame. Since entry 1 was fixed it costs about 1 ms per frame more than the baked image, so this is now minor.
 - **Area:** rendering
 - **Kind:** missing feature (culling / batching).
 
@@ -293,6 +303,7 @@ The first five are the ones that shaped the game the most.
 - **Detail:** `Texture`, `Tilemap`, `Font`, `Shader`, `Window` and `Mixer` write to `std::cout` / `std::clog` / `std::cerr` and bypass the sink, so they cannot be silenced or redirected. Loading the game's 46 textures prints 46 lines.
 - **Area:** other
 - **Kind:** missing feature.
+- **Status:** fixed in `5f06002` (engine classes now log through `glgame2d::logging`; no direct `std::cout` / `std::clog` / `std::cerr` left).
 
 ### 33. No licence file for the engine itself
 

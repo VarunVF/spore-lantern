@@ -14,13 +14,15 @@ potion, and throw it at the slime that seals the exit.
 | --- | --- |
 | Repository | https://github.com/VarunVF/glgame2d |
 | Fetched ref | `main` (the repository has no tags) |
-| **Commit used** | **`58312b47956e48200a6422834cc1c0a43204a057`** ("Update GLCall macro") |
+| **Commit used** | **`2033fd78fe35bd2257a66fbb00b7111c0a2f8cea`** ("Cache window size, separate window and framebuffer sizes") |
+| First built against | `58312b47956e48200a6422834cc1c0a43204a057` ("Update GLCall macro") |
 
 The engine is fetched with CMake `FetchContent`; nothing from it is vendored or
 modified here, and no local override is used. CMake prints the commit it
 fetched (`-- glgame2d commit: ...`). Because the ref is a branch, a later
 checkout may fetch a newer commit; the one above is what this game was built
-and tested against.
+and tested against. Engine fixes made since the first version are tracked in
+`FRICTION.md` under "Fixed upstream".
 
 ## Build
 
@@ -131,8 +133,11 @@ Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
    script generates the Tiled JSON from it: a solid tile layer, and an object
    layer of non-solid tile objects for the decoration.
 2. **The map is drawn as one baked image**, not with `Tilemap::render()`,
-   which draws every tile and object of the map (about 890) every frame at a
-   real cost per sprite. `F5` switches to the engine's rendering to compare.
+   which draws every tile and object of the map (about 890) every frame.
+   When this was decided each sprite cost a round trip to the X server; since
+   engine commit `2033fd7` that cost is gone and the engine's rendering is
+   about 1 ms slower per frame than the baked image (see `FRICTION.md` entry 1).
+   `F5` switches between the two.
 3. **Darkness is a grid of 16 px squares in 8 alpha steps** rather than smooth
    light, because sprites have no tint, alpha or blend mode. Crystals and the
    slime glow but do not light their surroundings, to save sprites.
@@ -154,7 +159,9 @@ Recorded here as the task asked. Details and measurements are in `FRICTION.md`.
 - Tested on Linux/X11 only (GCC 13.3, Mesa). The code is portable C++ and CMake,
   but Windows and macOS builds were not tried.
 - Performance was measured under a software renderer in a virtual display, not
-  on a GPU: about 13–15 ms per frame at roughly 400 sprites.
+  on a GPU: about 6 ms of work per frame at roughly 400 sprites, and about
+  7 ms with the engine drawing the map (about 1,250 sprites). `SPORE_PERF=1`
+  logs these numbers every 5 seconds.
 - Sound was generated and loaded successfully but checked by reading the
   synthesis code and levels, not by ear.
 - The game was verified by scripted playthroughs and screenshots, not by a
